@@ -4,7 +4,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import uuid
-import google.generativeai as genai
+from groq import Groq
 
 st.set_page_config(
     page_title="OrgX HR Assistant",
@@ -97,19 +97,18 @@ def send_email(emp_name, emp_email, emp_id, business_unit, query, ticket_id, gma
         st.session_state["email_error"] = str(e)
         return False
 
-def get_gemini_response(user_messages, api_key):
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        model_name="gemini-3.1-pro-preview",
-        system_instruction=HR_POLICY_CONTEXT
+def get_groq_response(user_messages, api_key):
+    client = Groq(api_key=api_key)
+    messages = [{"role": "system", "content": HR_POLICY_CONTEXT}]
+    for msg in user_messages:
+        messages.append({"role": msg["role"], "content": msg["content"]})
+    response = client.chat.completions.create(
+        model="llama3-8b-8192",
+        messages=messages,
+        max_tokens=1024,
+        temperature=0.3
     )
-    history = []
-    for msg in user_messages[:-1]:
-        role = "user" if msg["role"] == "user" else "model"
-        history.append({"role": role, "parts": [msg["content"]]})
-    chat = model.start_chat(history=history)
-    response = chat.send_message(user_messages[-1]["content"])
-    return response.text
+    return response.choices[0].message.content
 
 # Session state init
 for key, val in [
@@ -126,8 +125,8 @@ for key, val in [
 with st.sidebar:
     st.markdown("### Configuration")
     st.divider()
-    api_key = st.text_input("Gemini API Key", type="password", placeholder="AIza...")
-    st.caption("Get your free key at aistudio.google.com → Get API Key")
+    api_key = st.text_input("Groq API Key", type="password", placeholder="gsk_...")
+    st.caption("Get your free key at console.groq.com → API Keys")
     st.divider()
     gmail_user = st.text_input("Gmail (sender)", placeholder="yourname@gmail.com")
     gmail_password = st.text_input("Gmail App Password", type="password", placeholder="xxxx xxxx xxxx xxxx")
@@ -215,7 +214,7 @@ if not st.session_state.show_ticket_form:
     user_input = st.chat_input("Type your HR question here...")
     if user_input:
         if not api_key:
-            st.error("Please enter your Gemini API key in the sidebar.")
+            st.error("Please enter your Groq API key in the sidebar.")
             st.stop()
 
         st.session_state.messages.append({"role": "user", "content": user_input})
@@ -226,7 +225,7 @@ if not st.session_state.show_ticket_form:
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Thinking..."):
                 try:
-                    response_text = get_gemini_response(st.session_state.messages, api_key)
+                    response_text = get_groq_response(st.session_state.messages, api_key)
                     st.write(response_text)
 
                     escalation_phrases = [
@@ -255,4 +254,4 @@ if not st.session_state.show_ticket_form:
                     st.error(f"Error: {str(e)}")
                     st.session_state.messages.pop()
 
-st.caption("OrgX HR Assistant · Powered by Gemini AI · For HR queries only")
+st.caption("OrgX HR Assistant · Powered by Groq AI · For HR queries only")
