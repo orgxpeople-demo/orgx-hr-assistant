@@ -100,7 +100,7 @@ def send_email(emp_name, emp_email, emp_id, business_unit, query, ticket_id, gma
 def get_gemini_response(user_messages, api_key):
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-2.0-flash",
         system_instruction=HR_POLICY_CONTEXT
     )
     history = []
