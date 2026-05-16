@@ -1,10 +1,10 @@
 import streamlit as st
-import anthropic
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 import uuid
+import google.generativeai as genai
 
 st.set_page_config(
     page_title="OrgX HR Assistant",
@@ -97,6 +97,20 @@ def send_email(emp_name, emp_email, emp_id, business_unit, query, ticket_id, gma
         st.session_state["email_error"] = str(e)
         return False
 
+def get_gemini_response(user_messages, api_key):
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=HR_POLICY_CONTEXT
+    )
+    history = []
+    for msg in user_messages[:-1]:
+        role = "user" if msg["role"] == "user" else "model"
+        history.append({"role": role, "parts": [msg["content"]]})
+    chat = model.start_chat(history=history)
+    response = chat.send_message(user_messages[-1]["content"])
+    return response.text
+
 # Session state init
 for key, val in [
     ("messages", []),
@@ -104,7 +118,6 @@ for key, val in [
     ("ticket_raised", False),
     ("last_query", ""),
     ("ticket_id", ""),
-    ("pending_response", None),
 ]:
     if key not in st.session_state:
         st.session_state[key] = val
@@ -113,15 +126,17 @@ for key, val in [
 with st.sidebar:
     st.markdown("### Configuration")
     st.divider()
-    api_key = st.text_input("Anthropic API Key", type="password", placeholder="sk-ant-...")
+    api_key = st.text_input("Gemini API Key", type="password", placeholder="AIza...")
+    st.caption("Get your free key at aistudio.google.com → Get API Key")
+    st.divider()
     gmail_user = st.text_input("Gmail (sender)", placeholder="yourname@gmail.com")
     gmail_password = st.text_input("Gmail App Password", type="password", placeholder="xxxx xxxx xxxx xxxx")
     recipient_email = st.text_input("P&C Team Email", placeholder="pc-team@orgx.com")
     st.divider()
     st.caption("Gmail App Password: myaccount.google.com > Security > App passwords")
     if st.button("Clear conversation"):
-        for key in ["messages", "show_ticket_form", "ticket_raised", "last_query", "ticket_id", "pending_response"]:
-            st.session_state[key] = [] if key == "messages" else (False if key in ["show_ticket_form","ticket_raised"] else ("" if key != "pending_response" else None))
+        for key in ["messages", "show_ticket_form", "ticket_raised", "last_query", "ticket_id"]:
+            st.session_state[key] = [] if key == "messages" else (False if key in ["show_ticket_form", "ticket_raised"] else "")
         st.rerun()
 
 # Header
@@ -195,37 +210,31 @@ if st.session_state.show_ticket_form and not st.session_state.ticket_raised:
 
 st.divider()
 
-# Chat input — only shown when ticket form is not active
+# Chat input
 if not st.session_state.show_ticket_form:
     user_input = st.chat_input("Type your HR question here...")
     if user_input:
         if not api_key:
-            st.error("Please enter your Anthropic API key in the sidebar.")
+            st.error("Please enter your Gemini API key in the sidebar.")
             st.stop()
 
-        # Add user message
         st.session_state.messages.append({"role": "user", "content": user_input})
 
-        # Show user message immediately
         with st.chat_message("user", avatar="👤"):
             st.write(user_input)
 
-        # Get and show AI response
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Thinking..."):
                 try:
-                    client = anthropic.Anthropic(api_key=api_key)
-                    api_messages = [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-                    result = client.messages.create(
-                        model="claude-haiku-4-5-20251001",
-                        max_tokens=1024,
-                        system=HR_POLICY_CONTEXT,
-                        messages=api_messages
-                    )
-                    response_text = result.content[0].text
+                    response_text = get_gemini_response(st.session_state.messages, api_key)
                     st.write(response_text)
 
-                    escalation_phrases = ["don't have information", "outside my current knowledge", "raise a support ticket", "i'm sorry, i don't have"]
+                    escalation_phrases = [
+                        "don't have information",
+                        "outside my current knowledge",
+                        "raise a support ticket",
+                        "i'm sorry, i don't have"
+                    ]
                     needs_escalation = any(p in response_text.lower() for p in escalation_phrases)
 
                     st.session_state.messages.append({
@@ -246,4 +255,4 @@ if not st.session_state.show_ticket_form:
                     st.error(f"Error: {str(e)}")
                     st.session_state.messages.pop()
 
-st.caption("OrgX HR Assistant · Powered by Claude AI · For HR queries only")
+st.caption("OrgX HR Assistant · Powered by Gemini AI · For HR queries only")
