@@ -103,7 +103,7 @@ def get_groq_response(user_messages, api_key):
     for msg in user_messages:
         messages.append({"role": msg["role"], "content": msg["content"]})
     response = client.chat.completions.create(
-        model="llama3-8b-8192",
+        model="llama-3.1-8b-instant",
         messages=messages,
         max_tokens=1024,
         temperature=0.3
