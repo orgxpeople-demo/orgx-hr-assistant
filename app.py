@@ -84,7 +84,7 @@ def send_email(emp_name, emp_email, emp_id, business_unit, query, ticket_id, gma
         <p><b>Query:</b></p>
         <p style="background:#f0f4f8;padding:12px;border-radius:8px;">{query}</p>
         <hr/>
-        <p style="color:#6b7280;font-size:0.85rem;">Please respond within 15 working days (Tier 2 policy).</p>
+        <p style="color:#6b7280;font-size:0.85rem;">Please respond within 24-48 hours.</p>
         </div></div>
         </body></html>
         """
@@ -167,7 +167,7 @@ for msg in st.session_state.messages:
             if msg.get("escalation") and not msg.get("ticket_raised"):
                 st.warning("This query is outside my knowledge base. Please raise a support ticket below.")
             if msg.get("ticket_raised"):
-                st.success(f"Ticket {st.session_state.ticket_id} raised. The P&C team will respond within 15 working days.")
+                st.success(f"Ticket {st.session_state.ticket_id} raised. The P&C team will respond within 24-48 hours.")
 
 # Ticket form
 if st.session_state.show_ticket_form and not st.session_state.ticket_raised:
