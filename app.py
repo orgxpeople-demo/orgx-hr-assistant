@@ -2,15 +2,28 @@ import streamlit as st
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from datetime import datetime, date
 import uuid
 from groq import Groq
 
 st.set_page_config(
-    page_title="OrgX HR Assistant",
+    page_title="OrgX HR Portal",
     page_icon="🏢",
-    layout="centered"
+    layout="wide"
 )
+
+# ── CONSTANTS ─────────────────────────────────────────────────────────────────
+CC_OPTIONS = ["None", "My Reporting Manager", "HR Business Partner", "Finance Team", "Legal Team"]
+CC_MAP = {
+    "My Reporting Manager": "manager@orgx.com",
+    "HR Business Partner": "hrbp@orgx.com",
+    "Finance Team": "finance@orgx.com",
+    "Legal Team": "legal@orgx.com",
+}
+BUS_UNITS = ["Select...", "Consumer Products", "Financial Services",
+             "Technology Solutions", "Infrastructure", "Corporate Functions"]
+DEPARTMENTS = ["Select...", "Finance", "HR", "Operations", "Support",
+               "Marketing", "Engineering", "Sales"]
 
 HR_POLICY_CONTEXT = """
 You are the OrgX HR Assistant — an AI-powered self-service tool for OrgX employees.
@@ -59,43 +72,79 @@ No retaliation. All grievances confidential.
 IMPORTANT: If question is outside these policies, say exactly: "I'm sorry, I don't have information on that in my current knowledge base. I'd recommend raising a support ticket so our People & Culture team can assist you directly."
 """
 
-def send_email(emp_name, emp_email, emp_id, business_unit, query, ticket_id, gmail_user, gmail_password, recipient_email):
+# ── HELPERS ───────────────────────────────────────────────────────────────────
+def gen_ref(prefix):
+    return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
+
+def build_recipients(primary, cc_dropdown, cc_custom):
+    recipients = [primary]
+    cc_list = []
+    if cc_dropdown and cc_dropdown != "None" and cc_dropdown in CC_MAP:
+        cc_list.append(CC_MAP[cc_dropdown])
+    if cc_custom:
+        for email in [e.strip() for e in cc_custom.split(",")]:
+            if "@" in email and email not in cc_list:
+                cc_list.append(email)
+    return recipients, cc_list
+
+def send_email(subject, html_body, gmail_user, gmail_password, recipients, cc_list=[]):
     try:
         msg = MIMEMultipart("alternative")
-        msg["Subject"] = f"[OrgX HR Ticket] {ticket_id} - New Support Request"
+        msg["Subject"] = subject
         msg["From"] = gmail_user
-        msg["To"] = recipient_email
-        timestamp = datetime.now().strftime("%d %B %Y, %I:%M %p")
-        body = f"""
-        <html><body style="font-family:Arial,sans-serif;padding:20px;">
-        <div style="max-width:600px;margin:0 auto;background:white;border-radius:12px;border:1px solid #e0e0e0;">
-        <div style="background:#1F4E79;padding:20px 30px;">
-        <h2 style="color:white;margin:0;">OrgX HR Service Portal</h2>
-        <p style="color:#BDD7EE;margin:4px 0 0;">New Support Ticket</p>
-        </div>
-        <div style="padding:25px 30px;">
-        <p><b>Ticket ID:</b> {ticket_id}</p>
-        <p><b>Name:</b> {emp_name}</p>
-        <p><b>Employee ID:</b> {emp_id}</p>
-        <p><b>Email:</b> {emp_email}</p>
-        <p><b>Business Unit:</b> {business_unit}</p>
-        <p><b>Submitted:</b> {timestamp}</p>
-        <hr/>
-        <p><b>Query:</b></p>
-        <p style="background:#f0f4f8;padding:12px;border-radius:8px;">{query}</p>
-        <hr/>
-        <p style="color:#6b7280;font-size:0.85rem;">Please respond within 24-48 hours.</p>
-        </div></div>
-        </body></html>
-        """
-        msg.attach(MIMEText(body, "html"))
+        msg["To"] = ", ".join(recipients)
+        if cc_list:
+            msg["Cc"] = ", ".join(cc_list)
+        msg.attach(MIMEText(html_body, "html"))
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(gmail_user, gmail_password)
-            server.sendmail(gmail_user, recipient_email, msg.as_string())
+            server.sendmail(gmail_user, recipients + cc_list, msg.as_string())
         return True
     except Exception as e:
         st.session_state["email_error"] = str(e)
         return False
+
+def email_template(title, subtitle, ref_id, rows, footer_note, cc_list):
+    rows_html = "".join([f"<p><b>{k}:</b> {v}</p>" for k, v in rows.items()])
+    cc_section = f"<p><b>CC:</b> {', '.join(cc_list)}</p>" if cc_list else ""
+    return f"""
+    <html><body style="font-family:Arial,sans-serif;padding:20px;">
+    <div style="max-width:620px;margin:0 auto;background:white;border-radius:12px;border:1px solid #e0e0e0;">
+    <div style="background:#1F4E79;padding:20px 30px;">
+    <h2 style="color:white;margin:0;">OrgX HR Service Portal</h2>
+    <p style="color:#BDD7EE;margin:4px 0 0;">{title}</p>
+    </div>
+    <div style="padding:25px 30px;">
+    <div style="background:#FFF3E0;border-left:4px solid #FF9800;padding:10px 16px;
+    border-radius:0 8px 8px 0;margin-bottom:20px;">
+    <p style="margin:0;font-size:0.8rem;color:#E65100;font-weight:bold;
+    text-transform:uppercase;letter-spacing:0.5px;">Reference ID</p>
+    <p style="margin:4px 0 0;font-size:1rem;font-weight:bold;">{ref_id}</p>
+    </div>
+    {rows_html}
+    {cc_section}
+    <hr/>
+    <p style="color:#6b7280;font-size:0.85rem;">{footer_note}</p>
+    </div>
+    <div style="background:#f8f7f4;padding:12px 30px;text-align:center;">
+    <p style="color:#9ca3af;font-size:0.75rem;margin:0;">
+    OrgX HR Portal · Confidential · Do not forward</p>
+    </div>
+    </div></body></html>
+    """
+
+def cc_fields(key_prefix):
+    c1, c2 = st.columns(2)
+    with c1:
+        dropdown = st.selectbox("Copy in (CC)", CC_OPTIONS, key=f"{key_prefix}_cc_drop")
+    with c2:
+        custom = st.text_input("Additional emails",
+            placeholder="a@orgx.com, b@orgx.com", key=f"{key_prefix}_cc_custom")
+    return dropdown, custom
+
+def success_block(ref_id, label="Submission"):
+    st.success(f"✅ {label} submitted successfully! Reference ID: **{ref_id}**")
+    st.info("The People & Culture team will acknowledge within 24 hours.")
 
 def get_groq_response(user_messages, api_key):
     client = Groq(api_key=api_key)
@@ -110,43 +159,51 @@ def get_groq_response(user_messages, api_key):
     )
     return response.choices[0].message.content
 
-# Session state init
-for key, val in [
-    ("messages", []),
-    ("show_ticket_form", False),
-    ("ticket_raised", False),
-    ("last_query", ""),
-    ("ticket_id", ""),
-]:
-    if key not in st.session_state:
-        st.session_state[key] = val
+# ── SESSION STATE ─────────────────────────────────────────────────────────────
+defaults = {
+    "messages": [], "last_query": "",
+    "resignation_done": False, "resignation_ref": "",
+    "docreq_done": False, "docreq_ref": "",
+}
+for k, v in defaults.items():
+    if k not in st.session_state:
+        st.session_state[k] = v
 
-# Sidebar
+# ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### Configuration")
+    st.markdown("## 🏢 OrgX HR Portal")
     st.divider()
+    page = st.radio("", [
+        "🤖 HR Assistant",
+        "🚪 Resignation",
+        "📄 Document Request",
+    ], label_visibility="collapsed")
+    st.divider()
+    st.markdown("### ⚙️ Configuration")
     api_key = st.text_input("Groq API Key", type="password", placeholder="gsk_...")
-    st.caption("Get your free key at console.groq.com → API Keys")
-    st.divider()
     gmail_user = st.text_input("Gmail (sender)", placeholder="yourname@gmail.com")
-    gmail_password = st.text_input("Gmail App Password", type="password", placeholder="xxxx xxxx xxxx xxxx")
+    gmail_password = st.text_input("Gmail App Password", type="password",
+        placeholder="xxxx xxxx xxxx xxxx")
     recipient_email = st.text_input("P&C Team Email", placeholder="pc-team@orgx.com")
     st.divider()
-    st.caption("Gmail App Password: myaccount.google.com > Security > App passwords")
-    if st.button("Clear conversation"):
-        for key in ["messages", "show_ticket_form", "ticket_raised", "last_query", "ticket_id"]:
-            st.session_state[key] = [] if key == "messages" else (False if key in ["show_ticket_form", "ticket_raised"] else "")
-        st.rerun()
+    st.caption("Get your free Groq key at console.groq.com")
+    if page == "🤖 HR Assistant":
+        if st.button("Clear conversation"):
+            st.session_state.messages = []
+            st.session_state.last_query = ""
+            st.rerun()
 
-# Header
-st.title("OrgX HR Assistant")
-st.caption("Ask me about leave, reimbursements, appraisals, payroll, or grievances.")
-st.divider()
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: HR ASSISTANT
+# ══════════════════════════════════════════════════════════════════════════════
+if page == "🤖 HR Assistant":
+    st.title("OrgX HR Assistant")
+    st.caption("Ask me about leave, reimbursements, appraisals, payroll, or grievances.")
+    st.divider()
 
-# Welcome message
-if not st.session_state.messages:
-    with st.chat_message("assistant", avatar="🤖"):
-        st.markdown("""Hello! I am the OrgX HR Assistant. I can help you with:
+    if not st.session_state.messages:
+        with st.chat_message("assistant", avatar="🤖"):
+            st.markdown("""Hello! I am the OrgX HR Assistant. I can help you with:
 
 - **Leave** — entitlements, carry-forward, sick leave, sabbatical
 - **Reimbursements** — meals, travel, equipment
@@ -154,104 +211,230 @@ if not st.session_state.messages:
 - **Payroll** — payslips, salary structure, tax
 - **Grievances** — how to raise a concern
 
-What can I help you with today?""")
+For resignation or document requests use the sidebar. What can I help you with today?""")
 
-# Render conversation history
-for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        with st.chat_message("user", avatar="👤"):
-            st.write(msg["content"])
-    else:
-        with st.chat_message("assistant", avatar="🤖"):
-            st.write(msg["content"])
-            if msg.get("escalation") and not msg.get("ticket_raised"):
-                st.warning("This query is outside my knowledge base. Please raise a support ticket below.")
-            if msg.get("ticket_raised"):
-                st.success(f"Ticket {st.session_state.ticket_id} raised. The P&C team will respond within 24-48 hours.")
-
-# Ticket form
-if st.session_state.show_ticket_form and not st.session_state.ticket_raised:
-    st.divider()
-    st.subheader("Raise a Support Ticket")
-    col1, col2 = st.columns(2)
-    with col1:
-        emp_name = st.text_input("Full Name *")
-        emp_id = st.text_input("Employee ID *")
-    with col2:
-        emp_email = st.text_input("Work Email *")
-        emp_bu = st.selectbox("Business Unit *", ["Select...", "Consumer Products", "Financial Services", "Technology Solutions", "Infrastructure", "Corporate Functions"])
-    ticket_query = st.text_area("Your Query", value=st.session_state.last_query, height=80)
-    col_a, col_b = st.columns([1, 4])
-    with col_a:
-        submit = st.button("Send Ticket", type="primary")
-    with col_b:
-        if st.button("Cancel"):
-            st.session_state.show_ticket_form = False
-            st.rerun()
-    if submit:
-        if not all([emp_name, emp_email, emp_id]) or emp_bu == "Select...":
-            st.error("Please fill in all required fields.")
-        elif not all([gmail_user, gmail_password, recipient_email]):
-            st.error("Please fill in Gmail settings in the sidebar.")
+    for msg in st.session_state.messages:
+        if msg["role"] == "user":
+            with st.chat_message("user", avatar="👤"):
+                st.write(msg["content"])
         else:
-            tid = f"TKT-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
-            st.session_state.ticket_id = tid
-            ok = send_email(emp_name, emp_email, emp_id, emp_bu, ticket_query, tid, gmail_user, gmail_password, recipient_email)
-            if ok:
-                if st.session_state.messages:
-                    st.session_state.messages[-1]["ticket_raised"] = True
-                st.session_state.ticket_raised = True
-                st.session_state.show_ticket_form = False
-                st.rerun()
-            else:
-                err = st.session_state.get("email_error", "Unknown error")
-                st.error(f"Email failed: {err}. Check Gmail credentials in sidebar.")
+            with st.chat_message("assistant", avatar="🤖"):
+                st.write(msg["content"])
+                if msg.get("escalation"):
+                    st.warning("This is outside my knowledge base. "
+                               "Use **Raise a Ticket** in the sidebar.")
 
-st.divider()
-
-# Chat input
-if not st.session_state.show_ticket_form:
     user_input = st.chat_input("Type your HR question here...")
     if user_input:
         if not api_key:
             st.error("Please enter your Groq API key in the sidebar.")
             st.stop()
-
         st.session_state.messages.append({"role": "user", "content": user_input})
-
         with st.chat_message("user", avatar="👤"):
             st.write(user_input)
-
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Thinking..."):
                 try:
                     response_text = get_groq_response(st.session_state.messages, api_key)
                     st.write(response_text)
-
-                    escalation_phrases = [
-                        "don't have information",
-                        "outside my current knowledge",
-                        "raise a support ticket",
-                        "i'm sorry, i don't have"
-                    ]
-                    needs_escalation = any(p in response_text.lower() for p in escalation_phrases)
-
+                    phrases = ["don't have information", "outside my current knowledge",
+                               "raise a support ticket", "i'm sorry, i don't have"]
+                    needs_escalation = any(p in response_text.lower() for p in phrases)
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": response_text,
-                        "escalation": needs_escalation,
-                        "ticket_raised": False
+                        "escalation": needs_escalation
                     })
-
                     if needs_escalation:
-                        st.warning("This query is outside my knowledge base. Please raise a support ticket below.")
-                        st.session_state.show_ticket_form = True
-                        st.session_state.ticket_raised = False
                         st.session_state.last_query = user_input
-                        st.rerun()
-
+                        st.warning("This is outside my knowledge base. "
+                                   "Use the sidebar to reach the P&C team.")
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
                     st.session_state.messages.pop()
+    st.caption("OrgX HR Assistant · Powered by Groq AI · For HR queries only")
 
-st.caption("OrgX HR Assistant · Powered by Groq AI · For HR queries only")
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: RESIGNATION
+# ══════════════════════════════════════════════════════════════════════════════
+elif page == "🚪 Resignation":
+    st.title("Resignation Notice")
+    st.caption("Formally submit your resignation. The P&C team will acknowledge within 24 hours.")
+    st.divider()
+
+    if st.session_state.resignation_done:
+        success_block(st.session_state.resignation_ref, "Resignation Notice")
+        st.info("Please ensure all handover documentation is completed "
+                "before your last working day.")
+        if st.button("Submit another"):
+            st.session_state.resignation_done = False
+            st.rerun()
+    else:
+        st.markdown("### Employee Details")
+        c1, c2 = st.columns(2)
+        with c1:
+            r_name = st.text_input("Full Name *")
+            r_id = st.text_input("Employee ID *")
+            r_email = st.text_input("Work Email *")
+            r_design = st.text_input("Designation *")
+        with c2:
+            r_bu = st.selectbox("Business Unit *", BUS_UNITS)
+            r_dept = st.selectbox("Department *", DEPARTMENTS)
+            r_doj = st.date_input("Date of Joining *",
+                min_value=date(2000, 1, 1), max_value=date.today())
+
+        st.divider()
+        st.markdown("### Resignation Details")
+        c3, c4 = st.columns(2)
+        with c3:
+            r_lwd = st.date_input("Proposed Last Working Day *", min_value=date.today())
+            r_notice = st.selectbox("Notice Period *", [
+                "Select...", "Immediate", "2 Weeks",
+                "1 Month", "2 Months", "3 Months", "As per contract"])
+        with c4:
+            r_reason = st.selectbox("Primary Reason *", [
+                "Select...",
+                "Better career opportunity",
+                "Higher compensation elsewhere",
+                "Personal reasons", "Relocation",
+                "Further education", "Health reasons",
+                "Work-life balance", "Organisational culture",
+                "Role not aligned with expectations",
+                "Prefer not to say"])
+
+        r_comments = st.text_area("Additional Comments (optional)", height=80)
+        st.markdown("**CC (optional)**")
+        r_cc_drop, r_cc_custom = cc_fields("resign")
+        st.divider()
+        st.warning("⚠️ Submitting this form formally initiates your resignation "
+                   "and triggers the offboarding process.")
+
+        if st.button("Submit Resignation →", type="primary"):
+            errors = []
+            if not r_name: errors.append("Full Name")
+            if not r_id: errors.append("Employee ID")
+            if not r_email: errors.append("Work Email")
+            if not r_design: errors.append("Designation")
+            if r_bu == "Select...": errors.append("Business Unit")
+            if r_dept == "Select...": errors.append("Department")
+            if r_notice == "Select...": errors.append("Notice Period")
+            if r_reason == "Select...": errors.append("Reason")
+            if errors:
+                st.error(f"Please fill in: {', '.join(errors)}")
+            elif not all([gmail_user, gmail_password, recipient_email]):
+                st.error("Please configure Gmail in the sidebar.")
+            else:
+                ref = gen_ref("RES")
+                ts = datetime.now().strftime("%d %B %Y, %I:%M %p")
+                recipients, cc_list = build_recipients(
+                    recipient_email, r_cc_drop, r_cc_custom)
+                body = email_template(
+                    "Resignation Notice Submitted", r_reason, ref,
+                    {"Name": r_name, "Employee ID": r_id, "Email": r_email,
+                     "Business Unit": r_bu, "Department": r_dept,
+                     "Designation": r_design,
+                     "Date of Joining": str(r_doj),
+                     "Last Working Day": str(r_lwd),
+                     "Notice Period": r_notice,
+                     "Reason": r_reason,
+                     "Comments": r_comments or "None",
+                     "Submitted": ts},
+                    "Please initiate the offboarding process and "
+                    "acknowledge within 24 hours.", cc_list
+                )
+                ok = send_email(
+                    f"[OrgX Resignation] {ref} — {r_name} | {r_bu}",
+                    body, gmail_user, gmail_password, recipients, cc_list)
+                if ok:
+                    st.session_state.resignation_done = True
+                    st.session_state.resignation_ref = ref
+                    st.rerun()
+                else:
+                    err = st.session_state.get("email_error", "Unknown error")
+                    st.error(f"Submission failed: {err}")
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: DOCUMENT REQUEST
+# ══════════════════════════════════════════════════════════════════════════════
+elif page == "📄 Document Request":
+    st.title("Document Request")
+    st.caption("Standard documents are issued within 3 working days.")
+    st.divider()
+
+    if st.session_state.docreq_done:
+        success_block(st.session_state.docreq_ref, "Document Request")
+        if st.button("Submit another"):
+            st.session_state.docreq_done = False
+            st.rerun()
+    else:
+        c1, c2 = st.columns(2)
+        with c1:
+            d_name = st.text_input("Full Name *")
+            d_id = st.text_input("Employee ID *")
+            d_email = st.text_input("Work Email *")
+            d_bu = st.selectbox("Business Unit *", BUS_UNITS)
+        with c2:
+            d_type = st.selectbox("Document Type *", [
+                "Select...",
+                "Employment Verification Letter",
+                "Salary Certificate",
+                "Experience Letter",
+                "Relieving Letter",
+                "Payslip (specific month)",
+                "Form 16",
+                "PF Statement",
+                "Offer Letter Copy",
+                "NOC Letter",
+                "Other"])
+            d_purpose = st.text_input("Purpose / Reason *",
+                placeholder="e.g. Visa application, bank loan, background check")
+            d_urgent = st.checkbox("Mark as Urgent (required within 24 hours)")
+
+        d_comments = st.text_area("Additional Details (optional)", height=80,
+            placeholder="Any specific instructions, date range, or formatting requirements...")
+        st.markdown("**CC (optional)**")
+        d_cc_drop, d_cc_custom = cc_fields("docreq")
+        st.divider()
+
+        if st.button("Submit Document Request →", type="primary"):
+            errors = []
+            if not d_name: errors.append("Full Name")
+            if not d_id: errors.append("Employee ID")
+            if not d_email: errors.append("Work Email")
+            if not d_purpose: errors.append("Purpose")
+            if d_bu == "Select...": errors.append("Business Unit")
+            if d_type == "Select...": errors.append("Document Type")
+            if errors:
+                st.error(f"Please fill in: {', '.join(errors)}")
+            elif not all([gmail_user, gmail_password, recipient_email]):
+                st.error("Please configure Gmail in the sidebar.")
+            else:
+                ref = gen_ref("DOC")
+                ts = datetime.now().strftime("%d %B %Y, %I:%M %p")
+                urgent_label = "YES — Required within 24 hours" if d_urgent else "No"
+                recipients, cc_list = build_recipients(
+                    recipient_email, d_cc_drop, d_cc_custom)
+                body = email_template(
+                    "Document Request", d_type, ref,
+                    {"Name": d_name, "Employee ID": d_id, "Email": d_email,
+                     "Business Unit": d_bu, "Document Type": d_type,
+                     "Purpose": d_purpose, "Urgent": urgent_label,
+                     "Additional Details": d_comments or "None",
+                     "Submitted": ts},
+                    "Standard documents issued within 3 working days. "
+                    "Urgent requests within 24 hours.", cc_list
+                )
+                ok = send_email(
+                    f"[OrgX Document] {ref} — {d_type} | {d_name}",
+                    body, gmail_user, gmail_password, recipients, cc_list)
+                if ok:
+                    st.session_state.docreq_done = True
+                    st.session_state.docreq_ref = ref
+                    st.rerun()
+                else:
+                    err = st.session_state.get("email_error", "Unknown error")
+                    st.error(f"Submission failed: {err}")
+
+st.divider()
+st.caption("OrgX HR Portal · All submissions are confidential and "
+           "processed by the People & Culture team")
