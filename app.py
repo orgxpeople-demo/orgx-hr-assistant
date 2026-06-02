@@ -164,6 +164,7 @@ defaults = {
     "messages": [], "last_query": "",
     "resignation_done": False, "resignation_ref": "",
     "docreq_done": False, "docreq_ref": "",
+    "grievance_done": False, "grievance_ref": "",
 }
 for k, v in defaults.items():
     if k not in st.session_state:
@@ -177,6 +178,7 @@ with st.sidebar:
         "🤖 HR Assistant",
         "🚪 Resignation",
         "📄 Document Request",
+        "⚠️ Grievance",
     ], label_visibility="collapsed")
     st.divider()
     st.markdown("### ⚙️ Configuration")
@@ -464,6 +466,169 @@ elif page == "📄 Document Request":
                     err = st.session_state.get("email_error", "Unknown error")
                     st.error(f"Submission failed: {err}")
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PAGE: GRIEVANCE
+# ══════════════════════════════════════════════════════════════════════════════
+elif page == "⚠️ Grievance":
+    st.title("Grievance Form")
+    st.caption("All grievances are handled confidentially. OrgX's no-retaliation policy applies.")
+    st.divider()
+
+    if st.session_state.grievance_done:
+        success_block(st.session_state.grievance_ref, "Grievance")
+        st.info(
+            "Your grievance will be acknowledged within **2 working days** "
+            "and resolved within **15 working days** as per OrgX's Tier 2 Grievance Policy."
+        )
+        if st.button("Submit another"):
+            st.session_state.grievance_done = False
+            st.rerun()
+    else:
+        st.info(
+            "**Before proceeding:** OrgX's Grievance Policy encourages informal resolution "
+            "at Tier 1 first — please attempt a conversation with your reporting manager "
+            "if safe and appropriate to do so. Use this form if that was not possible "
+            "or not appropriate given the nature of the concern."
+        )
+
+        st.markdown("### Your Details")
+        c1, c2 = st.columns(2)
+        with c1:
+            g_name = st.text_input("Full Name *")
+            g_id = st.text_input("Employee ID *")
+            g_email = st.text_input("Work Email *")
+        with c2:
+            g_bu = st.selectbox("Business Unit *", BUS_UNITS)
+            g_dept = st.selectbox("Department *", DEPARTMENTS)
+
+        st.divider()
+        st.markdown("### Grievance Details")
+
+        g_type = st.selectbox("Grievance Type *", [
+            "Select...",
+            "Workplace Conduct / Behaviour",
+            "Unfair Treatment / Discrimination",
+            "Harassment or Bullying",
+            "Manager / Leadership Concern",
+            "Appraisal or Compensation Dispute",
+            "HR Process Concern",
+            "Policy Violation",
+            "POSH — Sexual Harassment",
+            "Other"
+        ])
+
+        g_type_other = ""
+        if g_type == "Other":
+            g_type_other = st.text_input("Please describe the type of grievance *",
+                placeholder="Briefly describe the nature of your concern...")
+
+        if g_type == "POSH — Sexual Harassment":
+            st.warning(
+                "⚠️ For POSH complaints, please also email **posh-ic@orgx.com** directly "
+                "for immediate action under the Prevention of Sexual Harassment Act, 2013. "
+                "Your complaint will be handled with strict confidentiality by the "
+                "Internal Committee."
+            )
+
+        g_against = st.text_input(
+            "Name or Role of Person / Team this concerns (optional)",
+            placeholder="e.g. Reporting Manager, Team Lead — leave blank if not applicable"
+        )
+
+        g_desc = st.text_area(
+            "Description of Grievance *",
+            height=150,
+            placeholder=(
+                "Please describe the concern in as much detail as possible. "
+                "Include relevant dates, locations, and any witnesses if applicable. "
+                "The more context you provide, the more effectively we can support you."
+            )
+        )
+
+        g_resolution = st.text_area(
+            "What outcome are you seeking? *",
+            height=80,
+            placeholder="e.g. Formal acknowledgement, mediation, policy review, disciplinary action..."
+        )
+
+        g_tier1 = st.radio(
+            "Have you attempted an informal resolution with your manager? *",
+            ["Yes — it was not resolved", "No — it was not safe or appropriate to do so",
+             "No — the grievance involves my manager directly"],
+            index=0
+        )
+
+        st.divider()
+        st.markdown("**CC (optional)**")
+        g_cc_custom = st.text_input(
+            "Email address(es) to copy",
+            placeholder="e.g. trusted.colleague@orgx.com",
+            help="Optional. Only add someone you explicitly want copied on this grievance."
+        )
+
+        st.divider()
+        st.warning(
+            "⚠️ All information submitted here is strictly confidential and will only be "
+            "shared with those directly involved in the resolution process. "
+            "OrgX's no-retaliation policy protects all employees who raise grievances in good faith."
+        )
+
+        if st.button("Submit Grievance →", type="primary"):
+            errors = []
+            if not g_name: errors.append("Full Name")
+            if not g_id: errors.append("Employee ID")
+            if not g_email: errors.append("Work Email")
+            if g_bu == "Select...": errors.append("Business Unit")
+            if g_dept == "Select...": errors.append("Department")
+            if g_type == "Select...": errors.append("Grievance Type")
+            if g_type == "Other" and not g_type_other:
+                errors.append("Please describe the type of grievance")
+            if not g_desc: errors.append("Description of Grievance")
+            if not g_resolution: errors.append("Desired Outcome")
+            if errors:
+                st.error(f"Please fill in: {', '.join(errors)}")
+            elif not all([gmail_user, gmail_password, recipient_email]):
+                st.error("Please configure Gmail in the sidebar.")
+            else:
+                ref = gen_ref("GRV")
+                ts = datetime.now().strftime("%d %B %Y, %I:%M %p")
+                final_type = g_type_other if g_type == "Other" else g_type
+                cc_list = []
+                if g_cc_custom:
+                    for e in [x.strip() for x in g_cc_custom.split(",")]:
+                        if "@" in e:
+                            cc_list.append(e)
+                recipients = [recipient_email]
+                body = email_template(
+                    "Grievance Submitted — CONFIDENTIAL", final_type, ref,
+                    {"Name": g_name, "Employee ID": g_id, "Email": g_email,
+                     "Business Unit": g_bu, "Department": g_dept,
+                     "Grievance Type": final_type,
+                     "Concerns": g_against or "Not specified",
+                     "Tier 1 Attempted": g_tier1,
+                     "Description": g_desc,
+                     "Desired Outcome": g_resolution,
+                     "Submitted": ts},
+                    "This grievance is strictly confidential. Please acknowledge within "
+                    "2 working days and resolve within 15 working days (Tier 2 policy). "
+                    "Do not share this information beyond those directly involved "
+                    "in the resolution process.",
+                    cc_list
+                )
+                ok = send_email(
+                    f"[OrgX Grievance — CONFIDENTIAL] {ref} | {final_type}",
+                    body, gmail_user, gmail_password, recipients, cc_list
+                )
+                if ok:
+                    st.session_state.grievance_done = True
+                    st.session_state.grievance_ref = ref
+                    st.rerun()
+                else:
+                    err = st.session_state.get("email_error", "Unknown error")
+                    st.error(f"Submission failed: {err}")
+
+
+
 st.divider()
-st.caption("OrgX HR Portal · All submissions are confidential and "
-           "processed by the People & Culture team")
+st.caption('OrgX HR Portal · All submissions are confidential and processed by the People & Culture team')
