@@ -285,26 +285,49 @@ elif page == "🚪 Resignation":
 
         st.divider()
         st.markdown("### Resignation Details")
-        c3, c4 = st.columns(2)
-        with c3:
-            r_lwd = st.date_input("Proposed Last Working Day *", min_value=date.today())
-            r_notice = st.selectbox("Notice Period *", [
-                "Select...", "Immediate", "2 Weeks",
-                "1 Month", "2 Months", "3 Months", "As per contract"])
-        with c4:
-            r_reason = st.selectbox("Primary Reason *", [
-                "Select...",
-                "Better career opportunity",
-                "Higher compensation elsewhere",
-                "Personal reasons", "Relocation",
-                "Further education", "Health reasons",
-                "Work-life balance", "Organisational culture",
-                "Role not aligned with expectations",
-                "Prefer not to say"])
 
-        r_comments = st.text_area("Additional Comments (optional)", height=80)
+        r_reason_choice = st.selectbox("Primary Reason for Resignation *", [
+            "Select...",
+            "Better career opportunity",
+            "Higher compensation elsewhere",
+            "Personal reasons",
+            "Relocation",
+            "Further education",
+            "Health reasons",
+            "Work-life balance",
+            "Organisational culture",
+            "Role not aligned with expectations",
+            "Other"])
+
+        r_reason_other = ""
+        if r_reason_choice == "Other":
+            r_reason_other = st.text_input("Please specify your reason *",
+                placeholder="Enter your reason here...")
+
+        r_reason = r_reason_other if r_reason_choice == "Other" else r_reason_choice
+
+        st.divider()
+        st.markdown("### Notice Period Buyout")
+        r_buyout = st.checkbox("I would like to explore the notice period buyout option")
+        if r_buyout:
+            st.info(
+                "ℹ️ Notice period buyout is subject to company policy and is granted at the "
+                "sole discretion of OrgX based on handover completion and replacement "
+                "requirements. Selecting this option does not guarantee approval. "
+                "The People & Culture team will confirm eligibility upon reviewing your resignation."
+            )
+
+        r_comments = st.text_area("Additional Comments (optional)", height=80,
+            placeholder="Any additional context or handover notes...")
+
+        st.divider()
         st.markdown("**CC (optional)**")
-        r_cc_drop, r_cc_custom = cc_fields("resign")
+        r_cc_custom = st.text_input(
+            "Email address(es) to copy",
+            placeholder="e.g. your.manager@orgx.com, colleague@orgx.com",
+            help="Enter your reporting manager's email or any other recipient. "
+                 "Separate multiple emails with a comma.")
+
         st.divider()
         st.warning("⚠️ Submitting this form formally initiates your resignation "
                    "and triggers the offboarding process.")
@@ -317,8 +340,9 @@ elif page == "🚪 Resignation":
             if not r_design: errors.append("Designation")
             if r_bu == "Select...": errors.append("Business Unit")
             if r_dept == "Select...": errors.append("Department")
-            if r_notice == "Select...": errors.append("Notice Period")
-            if r_reason == "Select...": errors.append("Reason")
+            if r_reason_choice == "Select...": errors.append("Reason for Resignation")
+            if r_reason_choice == "Other" and not r_reason_other:
+                errors.append("Please specify your reason")
             if errors:
                 st.error(f"Please fill in: {', '.join(errors)}")
             elif not all([gmail_user, gmail_password, recipient_email]):
@@ -326,21 +350,26 @@ elif page == "🚪 Resignation":
             else:
                 ref = gen_ref("RES")
                 ts = datetime.now().strftime("%d %B %Y, %I:%M %p")
-                recipients, cc_list = build_recipients(
-                    recipient_email, r_cc_drop, r_cc_custom)
+                buyout_label = "Yes — pending P&C review and approval" if r_buyout else "No"
+                cc_list = []
+                if r_cc_custom:
+                    for e in [x.strip() for x in r_cc_custom.split(",")]:
+                        if "@" in e:
+                            cc_list.append(e)
+                recipients = [recipient_email]
                 body = email_template(
                     "Resignation Notice Submitted", r_reason, ref,
                     {"Name": r_name, "Employee ID": r_id, "Email": r_email,
                      "Business Unit": r_bu, "Department": r_dept,
                      "Designation": r_design,
                      "Date of Joining": str(r_doj),
-                     "Last Working Day": str(r_lwd),
-                     "Notice Period": r_notice,
-                     "Reason": r_reason,
-                     "Comments": r_comments or "None",
+                     "Reason for Resignation": r_reason,
+                     "Notice Period Buyout Requested": buyout_label,
+                     "Additional Comments": r_comments or "None",
                      "Submitted": ts},
-                    "Please initiate the offboarding process and "
-                    "acknowledge within 24 hours.", cc_list
+                    "Please initiate the offboarding process and acknowledge within 24 hours. "
+                    "If a buyout has been requested, please confirm eligibility with the employee.",
+                    cc_list
                 )
                 ok = send_email(
                     f"[OrgX Resignation] {ref} — {r_name} | {r_bu}",
