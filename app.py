@@ -5,6 +5,9 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, date
 import uuid
 from groq import Groq
+import gspread
+from google.oauth2.service_account import Credentials
+import json
 
 st.set_page_config(
     page_title="OrgX HR Portal",
@@ -13,13 +16,6 @@ st.set_page_config(
 )
 
 # ── CONSTANTS ─────────────────────────────────────────────────────────────────
-CC_OPTIONS = ["None", "My Reporting Manager", "HR Business Partner", "Finance Team", "Legal Team"]
-CC_MAP = {
-    "My Reporting Manager": "manager@orgx.com",
-    "HR Business Partner": "hrbp@orgx.com",
-    "Finance Team": "finance@orgx.com",
-    "Legal Team": "legal@orgx.com",
-}
 BUS_UNITS = ["Select...", "Consumer Products", "Financial Services",
              "Technology Solutions", "Infrastructure", "Corporate Functions"]
 DEPARTMENTS = ["Select...", "Finance", "HR", "Operations", "Support",
@@ -72,21 +68,59 @@ No retaliation. All grievances confidential.
 IMPORTANT: If question is outside these policies, say exactly: "I'm sorry, I don't have information on that in my current knowledge base. I'd recommend raising a support ticket so our People & Culture team can assist you directly."
 """
 
-# ── HELPERS ───────────────────────────────────────────────────────────────────
-def gen_ref(prefix):
-    return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
+# ── GOOGLE SHEETS ─────────────────────────────────────────────────────────────
+SHEET_HEADERS = {
+    "Resignations":      ["Ref ID", "Timestamp", "Name", "Employee ID", "Email",
+                          "Business Unit", "Department", "Designation",
+                          "Date of Joining", "Reason", "Buyout Requested",
+                          "Comments", "CC", "Status"],
+    "Document Requests": ["Ref ID", "Timestamp", "Name", "Employee ID", "Email",
+                          "Business Unit", "Document Type", "Purpose",
+                          "Urgent", "Additional Details", "CC", "Status"],
+    "Grievances":        ["Ref ID", "Timestamp", "Name", "Employee ID", "Email",
+                          "Business Unit", "Department", "Grievance Type",
+                          "Concerns", "Tier 1 Attempted", "Description",
+                          "Desired Outcome", "CC", "Status"],
+    "HR Assistant":      ["Ticket ID", "Timestamp", "Query", "Response",
+                          "Escalated", "Status"],
+}
 
-def build_recipients(primary, cc_dropdown, cc_custom):
-    recipients = [primary]
-    cc_list = []
-    if cc_dropdown and cc_dropdown != "None" and cc_dropdown in CC_MAP:
-        cc_list.append(CC_MAP[cc_dropdown])
-    if cc_custom:
-        for email in [e.strip() for e in cc_custom.split(",")]:
-            if "@" in email and email not in cc_list:
-                cc_list.append(email)
-    return recipients, cc_list
+def get_gsheet_client(creds_json_str):
+    try:
+        creds_dict = json.loads(creds_json_str)
+        scopes = [
+            "https://spreadsheets.google.com/feeds",
+            "https://www.googleapis.com/auth/drive"
+        ]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        return gspread.authorize(creds)
+    except Exception as e:
+        st.session_state["sheets_error"] = str(e)
+        return None
 
+def log_to_sheet(creds_json_str, sheet_url, tab_name, row_data):
+    if not creds_json_str or not sheet_url:
+        return False
+    try:
+        gc = get_gsheet_client(creds_json_str)
+        if not gc:
+            return False
+        sh = gc.open_by_url(sheet_url)
+        try:
+            ws = sh.worksheet(tab_name)
+        except:
+            ws = sh.add_worksheet(title=tab_name, rows=1000, cols=20)
+            ws.append_row(SHEET_HEADERS[tab_name])
+        existing = ws.get_all_values()
+        if not existing:
+            ws.append_row(SHEET_HEADERS[tab_name])
+        ws.append_row(row_data)
+        return True
+    except Exception as e:
+        st.session_state["sheets_error"] = str(e)
+        return False
+
+# ── EMAIL ─────────────────────────────────────────────────────────────────────
 def send_email(subject, html_body, gmail_user, gmail_password, recipients, cc_list=[]):
     try:
         msg = MIMEMultipart("alternative")
@@ -109,41 +143,39 @@ def email_template(title, subtitle, ref_id, rows, footer_note, cc_list):
     cc_section = f"<p><b>CC:</b> {', '.join(cc_list)}</p>" if cc_list else ""
     return f"""
     <html><body style="font-family:Arial,sans-serif;padding:20px;">
-    <div style="max-width:620px;margin:0 auto;background:white;border-radius:12px;border:1px solid #e0e0e0;">
+    <div style="max-width:620px;margin:0 auto;background:white;
+    border-radius:12px;border:1px solid #e0e0e0;">
     <div style="background:#1F4E79;padding:20px 30px;">
     <h2 style="color:white;margin:0;">OrgX HR Service Portal</h2>
     <p style="color:#BDD7EE;margin:4px 0 0;">{title}</p>
     </div>
     <div style="padding:25px 30px;">
-    <div style="background:#FFF3E0;border-left:4px solid #FF9800;padding:10px 16px;
-    border-radius:0 8px 8px 0;margin-bottom:20px;">
+    <div style="background:#FFF3E0;border-left:4px solid #FF9800;
+    padding:10px 16px;border-radius:0 8px 8px 0;margin-bottom:20px;">
     <p style="margin:0;font-size:0.8rem;color:#E65100;font-weight:bold;
     text-transform:uppercase;letter-spacing:0.5px;">Reference ID</p>
     <p style="margin:4px 0 0;font-size:1rem;font-weight:bold;">{ref_id}</p>
     </div>
-    {rows_html}
-    {cc_section}
+    {rows_html}{cc_section}
     <hr/>
     <p style="color:#6b7280;font-size:0.85rem;">{footer_note}</p>
     </div>
     <div style="background:#f8f7f4;padding:12px 30px;text-align:center;">
     <p style="color:#9ca3af;font-size:0.75rem;margin:0;">
     OrgX HR Portal · Confidential · Do not forward</p>
-    </div>
-    </div></body></html>
+    </div></div></body></html>
     """
 
-def cc_fields(key_prefix):
-    c1, c2 = st.columns(2)
-    with c1:
-        dropdown = st.selectbox("Copy in (CC)", CC_OPTIONS, key=f"{key_prefix}_cc_drop")
-    with c2:
-        custom = st.text_input("Additional emails",
-            placeholder="a@orgx.com, b@orgx.com", key=f"{key_prefix}_cc_custom")
-    return dropdown, custom
+def parse_cc(cc_raw):
+    if not cc_raw:
+        return []
+    return [e.strip() for e in cc_raw.split(",") if "@" in e.strip()]
+
+def gen_ref(prefix):
+    return f"{prefix}-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:4].upper()}"
 
 def success_block(ref_id, label="Submission"):
-    st.success(f"✅ {label} submitted successfully! Reference ID: **{ref_id}**")
+    st.success(f"✅ {label} submitted! Reference ID: **{ref_id}**")
     st.info("The People & Culture team will acknowledge within 24 hours.")
 
 def get_groq_response(user_messages, api_key):
@@ -170,36 +202,53 @@ for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
 
-# ── SIDEBAR ───────────────────────────────────────────────────────────────────
+# ── SIDEBAR — CONFIG ONLY ─────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## 🏢 OrgX HR Portal")
+    st.markdown("## ⚙️ Configuration")
     st.divider()
-    page = st.radio("", [
-        "🤖 HR Assistant",
-        "🚪 Resignation",
-        "📄 Document Request",
-        "⚠️ Grievance",
-    ], label_visibility="collapsed")
-    st.divider()
-    st.markdown("### ⚙️ Configuration")
     api_key = st.text_input("Groq API Key", type="password", placeholder="gsk_...")
+    st.caption("Free key at console.groq.com")
+    st.divider()
+    st.markdown("**Email Settings**")
     gmail_user = st.text_input("Gmail (sender)", placeholder="yourname@gmail.com")
     gmail_password = st.text_input("Gmail App Password", type="password",
         placeholder="xxxx xxxx xxxx xxxx")
-    recipient_email = st.text_input("P&C Team Email", placeholder="pc-team@orgx.com")
+    recipient_email = st.text_input("P&C Team Email", placeholder="pc@orgx.com")
     st.divider()
-    st.caption("Get your free Groq key at console.groq.com")
-    if page == "🤖 HR Assistant":
-        if st.button("Clear conversation"):
-            st.session_state.messages = []
-            st.session_state.last_query = ""
-            st.rerun()
+    st.markdown("**Google Sheets Tracking**")
+    sheet_url = st.text_input("Sheet URL",
+        placeholder="https://docs.google.com/spreadsheets/d/...")
+    creds_json = st.text_area("Service Account JSON",
+        placeholder='{"type":"service_account",...}', height=100)
+    st.caption("See setup guide for Google Sheets instructions")
+    st.divider()
+    if st.button("Clear chat history"):
+        st.session_state.messages = []
+        st.session_state.last_query = ""
+        st.rerun()
+
+# ── HEADER ────────────────────────────────────────────────────────────────────
+st.markdown("""
+<div style="background:#1F4E79;padding:1.5rem 2rem;border-radius:12px;margin-bottom:1.5rem;">
+<h1 style="color:white;margin:0;font-size:1.8rem;">🏢 OrgX HR Portal</h1>
+<p style="color:#BDD7EE;margin:4px 0 0;font-size:0.9rem;">
+People & Culture · Self-Service · Available 24/7</p>
+</div>
+""", unsafe_allow_html=True)
+
+# ── TABS ──────────────────────────────────────────────────────────────────────
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🤖  HR Assistant",
+    "🚪  Resignation",
+    "📄  Document Request",
+    "⚠️  Grievance",
+])
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: HR ASSISTANT
+# TAB 1 — HR ASSISTANT
 # ══════════════════════════════════════════════════════════════════════════════
-if page == "🤖 HR Assistant":
-    st.title("OrgX HR Assistant")
+with tab1:
+    st.markdown("### OrgX HR Assistant")
     st.caption("Ask me about leave, reimbursements, appraisals, payroll, or grievances.")
     st.divider()
 
@@ -213,7 +262,7 @@ if page == "🤖 HR Assistant":
 - **Payroll** — payslips, salary structure, tax
 - **Grievances** — how to raise a concern
 
-For resignation or document requests use the sidebar. What can I help you with today?""")
+For resignation, document requests or grievances, use the tabs above.""")
 
     for msg in st.session_state.messages:
         if msg["role"] == "user":
@@ -224,7 +273,7 @@ For resignation or document requests use the sidebar. What can I help you with t
                 st.write(msg["content"])
                 if msg.get("escalation"):
                     st.warning("This is outside my knowledge base. "
-                               "Use **Raise a Ticket** in the sidebar.")
+                               "Use the tabs above to reach the P&C team.")
 
     user_input = st.chat_input("Type your HR question here...")
     if user_input:
@@ -249,18 +298,24 @@ For resignation or document requests use the sidebar. What can I help you with t
                     })
                     if needs_escalation:
                         st.session_state.last_query = user_input
-                        st.warning("This is outside my knowledge base. "
-                                   "Use the sidebar to reach the P&C team.")
+                        st.warning("Use the tabs above to reach the P&C team directly.")
+                    if sheet_url and creds_json:
+                        tid = gen_ref("BOT")
+                        log_to_sheet(creds_json, sheet_url, "HR Assistant",
+                            [tid, datetime.now().strftime("%d %b %Y %H:%M"),
+                             user_input, response_text,
+                             "Yes" if needs_escalation else "No", "Closed"])
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
                     st.session_state.messages.pop()
-    st.caption("OrgX HR Assistant · Powered by Groq AI · For HR queries only")
+
+    st.caption("Powered by Groq AI · Responses based on OrgX policy documents only")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: RESIGNATION
+# TAB 2 — RESIGNATION
 # ══════════════════════════════════════════════════════════════════════════════
-elif page == "🚪 Resignation":
-    st.title("Resignation Notice")
+with tab2:
+    st.markdown("### Resignation Notice")
     st.caption("Formally submit your resignation. The P&C team will acknowledge within 24 hours.")
     st.divider()
 
@@ -268,73 +323,71 @@ elif page == "🚪 Resignation":
         success_block(st.session_state.resignation_ref, "Resignation Notice")
         st.info("Please ensure all handover documentation is completed "
                 "before your last working day.")
-        if st.button("Submit another"):
+        if st.button("Submit another resignation"):
             st.session_state.resignation_done = False
             st.rerun()
     else:
-        st.markdown("### Employee Details")
+        st.markdown("#### Employee Details")
         c1, c2 = st.columns(2)
         with c1:
-            r_name = st.text_input("Full Name *")
-            r_id = st.text_input("Employee ID *")
-            r_email = st.text_input("Work Email *")
-            r_design = st.text_input("Designation *")
+            r_name = st.text_input("Full Name *", key="r_name")
+            r_id = st.text_input("Employee ID *", key="r_id")
+            r_email = st.text_input("Work Email *", key="r_email")
+            r_design = st.text_input("Designation *", key="r_design")
         with c2:
-            r_bu = st.selectbox("Business Unit *", BUS_UNITS)
-            r_dept = st.selectbox("Department *", DEPARTMENTS)
-            r_doj = st.date_input("Date of Joining *",
+            r_bu = st.selectbox("Business Unit *", BUS_UNITS, key="r_bu")
+            r_dept = st.selectbox("Department *", DEPARTMENTS, key="r_dept")
+            r_doj = st.date_input("Date of Joining *", key="r_doj",
                 min_value=date(2000, 1, 1), max_value=date.today())
 
         st.divider()
-        st.markdown("### Resignation Details")
+        st.markdown("#### Resignation Details")
 
         r_reason_choice = st.selectbox("Primary Reason for Resignation *", [
-            "Select...",
-            "Better career opportunity",
-            "Higher compensation elsewhere",
-            "Personal reasons",
-            "Relocation",
-            "Further education",
-            "Health reasons",
-            "Work-life balance",
-            "Organisational culture",
-            "Role not aligned with expectations",
-            "Other"])
+            "Select...", "Better career opportunity",
+            "Higher compensation elsewhere", "Personal reasons",
+            "Relocation", "Further education", "Health reasons",
+            "Work-life balance", "Organisational culture",
+            "Role not aligned with expectations", "Other"
+        ], key="r_reason_choice")
 
         r_reason_other = ""
         if r_reason_choice == "Other":
             r_reason_other = st.text_input("Please specify your reason *",
-                placeholder="Enter your reason here...")
+                placeholder="Enter your reason here...", key="r_reason_other")
 
         r_reason = r_reason_other if r_reason_choice == "Other" else r_reason_choice
 
         st.divider()
-        st.markdown("### Notice Period Buyout")
-        r_buyout = st.checkbox("I would like to explore the notice period buyout option")
+        st.markdown("#### Notice Period Buyout")
+        r_buyout = st.checkbox(
+            "I would like to explore the notice period buyout option",
+            key="r_buyout"
+        )
         if r_buyout:
             st.info(
-                "ℹ️ Notice period buyout is subject to company policy and is granted at the "
-                "sole discretion of OrgX based on handover completion and replacement "
-                "requirements. Selecting this option does not guarantee approval. "
-                "The People & Culture team will confirm eligibility upon reviewing your resignation."
+                "ℹ️ Notice period buyout is subject to company policy and is granted at "
+                "the sole discretion of OrgX based on handover completion and replacement "
+                "requirements. Selecting this does not guarantee approval. The P&C team "
+                "will confirm eligibility upon reviewing your resignation."
             )
 
         r_comments = st.text_area("Additional Comments (optional)", height=80,
+            key="r_comments",
             placeholder="Any additional context or handover notes...")
 
         st.divider()
         st.markdown("**CC (optional)**")
-        r_cc_custom = st.text_input(
-            "Email address(es) to copy",
+        r_cc = st.text_input("Email address(es) to copy",
             placeholder="e.g. your.manager@orgx.com, colleague@orgx.com",
-            help="Enter your reporting manager's email or any other recipient. "
-                 "Separate multiple emails with a comma.")
+            key="r_cc",
+            help="Separate multiple emails with a comma.")
 
         st.divider()
         st.warning("⚠️ Submitting this form formally initiates your resignation "
                    "and triggers the offboarding process.")
 
-        if st.button("Submit Resignation →", type="primary"):
+        if st.button("Submit Resignation →", type="primary", key="resign_submit"):
             errors = []
             if not r_name: errors.append("Full Name")
             if not r_id: errors.append("Employee ID")
@@ -352,58 +405,54 @@ elif page == "🚪 Resignation":
             else:
                 ref = gen_ref("RES")
                 ts = datetime.now().strftime("%d %B %Y, %I:%M %p")
-                buyout_label = "Yes — pending P&C review and approval" if r_buyout else "No"
-                cc_list = []
-                if r_cc_custom:
-                    for e in [x.strip() for x in r_cc_custom.split(",")]:
-                        if "@" in e:
-                            cc_list.append(e)
-                recipients = [recipient_email]
+                buyout_label = "Yes — pending P&C review" if r_buyout else "No"
+                cc_list = parse_cc(r_cc)
                 body = email_template(
                     "Resignation Notice Submitted", r_reason, ref,
                     {"Name": r_name, "Employee ID": r_id, "Email": r_email,
                      "Business Unit": r_bu, "Department": r_dept,
-                     "Designation": r_design,
-                     "Date of Joining": str(r_doj),
-                     "Reason for Resignation": r_reason,
+                     "Designation": r_design, "Date of Joining": str(r_doj),
+                     "Reason": r_reason,
                      "Notice Period Buyout Requested": buyout_label,
-                     "Additional Comments": r_comments or "None",
-                     "Submitted": ts},
+                     "Comments": r_comments or "None", "Submitted": ts},
                     "Please initiate the offboarding process and acknowledge within 24 hours. "
-                    "If a buyout has been requested, please confirm eligibility with the employee.",
-                    cc_list
+                    "If buyout requested, confirm eligibility with the employee.", cc_list
                 )
                 ok = send_email(
                     f"[OrgX Resignation] {ref} — {r_name} | {r_bu}",
-                    body, gmail_user, gmail_password, recipients, cc_list)
+                    body, gmail_user, gmail_password, [recipient_email], cc_list
+                )
                 if ok:
+                    log_to_sheet(creds_json, sheet_url, "Resignations",
+                        [ref, ts, r_name, r_id, r_email, r_bu, r_dept,
+                         r_design, str(r_doj), r_reason, buyout_label,
+                         r_comments, ", ".join(cc_list), "Received"])
                     st.session_state.resignation_done = True
                     st.session_state.resignation_ref = ref
                     st.rerun()
                 else:
-                    err = st.session_state.get("email_error", "Unknown error")
-                    st.error(f"Submission failed: {err}")
+                    st.error(f"Submission failed: {st.session_state.get('email_error','')}")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: DOCUMENT REQUEST
+# TAB 3 — DOCUMENT REQUEST
 # ══════════════════════════════════════════════════════════════════════════════
-elif page == "📄 Document Request":
-    st.title("Document Request")
-    st.caption("Standard documents are issued within 3 working days.")
+with tab3:
+    st.markdown("### Document Request")
+    st.caption("Standard documents are issued within 3 working days. Urgent requests within 24 hours.")
     st.divider()
 
     if st.session_state.docreq_done:
         success_block(st.session_state.docreq_ref, "Document Request")
-        if st.button("Submit another"):
+        if st.button("Submit another request"):
             st.session_state.docreq_done = False
             st.rerun()
     else:
         c1, c2 = st.columns(2)
         with c1:
-            d_name = st.text_input("Full Name *")
-            d_id = st.text_input("Employee ID *")
-            d_email = st.text_input("Work Email *")
-            d_bu = st.selectbox("Business Unit *", BUS_UNITS)
+            d_name = st.text_input("Full Name *", key="d_name")
+            d_id = st.text_input("Employee ID *", key="d_id")
+            d_email = st.text_input("Work Email *", key="d_email")
+            d_bu = st.selectbox("Business Unit *", BUS_UNITS, key="d_bu")
         with c2:
             d_type = st.selectbox("Document Type *", [
                 "Select...",
@@ -416,18 +465,31 @@ elif page == "📄 Document Request":
                 "PF Statement",
                 "Offer Letter Copy",
                 "NOC Letter",
-                "Other"])
+                "Other"
+            ], key="d_type")
             d_purpose = st.text_input("Purpose / Reason *",
-                placeholder="e.g. Visa application, bank loan, background check")
-            d_urgent = st.checkbox("Mark as Urgent (required within 24 hours)")
+                placeholder="e.g. Visa application, bank loan, background check",
+                key="d_purpose")
+            d_urgent = st.checkbox("Mark as Urgent (required within 24 hours)", key="d_urgent")
+
+        d_type_other = ""
+        if d_type == "Other":
+            d_type_other = st.text_input("Please specify the document required *",
+                key="d_type_other")
 
         d_comments = st.text_area("Additional Details (optional)", height=80,
+            key="d_comments",
             placeholder="Any specific instructions, date range, or formatting requirements...")
-        st.markdown("**CC (optional)**")
-        d_cc_drop, d_cc_custom = cc_fields("docreq")
-        st.divider()
 
-        if st.button("Submit Document Request →", type="primary"):
+        st.divider()
+        st.markdown("**CC (optional)**")
+        d_cc = st.text_input("Email address(es) to copy",
+            placeholder="e.g. your.manager@orgx.com",
+            key="d_cc",
+            help="Separate multiple emails with a comma.")
+
+        st.divider()
+        if st.button("Submit Document Request →", type="primary", key="docreq_submit"):
             errors = []
             if not d_name: errors.append("Full Name")
             if not d_id: errors.append("Employee ID")
@@ -435,6 +497,8 @@ elif page == "📄 Document Request":
             if not d_purpose: errors.append("Purpose")
             if d_bu == "Select...": errors.append("Business Unit")
             if d_type == "Select...": errors.append("Document Type")
+            if d_type == "Other" and not d_type_other:
+                errors.append("Please specify the document required")
             if errors:
                 st.error(f"Please fill in: {', '.join(errors)}")
             elif not all([gmail_user, gmail_password, recipient_email]):
@@ -442,68 +506,64 @@ elif page == "📄 Document Request":
             else:
                 ref = gen_ref("DOC")
                 ts = datetime.now().strftime("%d %B %Y, %I:%M %p")
+                final_type = d_type_other if d_type == "Other" else d_type
                 urgent_label = "YES — Required within 24 hours" if d_urgent else "No"
-                recipients, cc_list = build_recipients(
-                    recipient_email, d_cc_drop, d_cc_custom)
+                cc_list = parse_cc(d_cc)
                 body = email_template(
-                    "Document Request", d_type, ref,
+                    "Document Request", final_type, ref,
                     {"Name": d_name, "Employee ID": d_id, "Email": d_email,
-                     "Business Unit": d_bu, "Document Type": d_type,
+                     "Business Unit": d_bu, "Document Type": final_type,
                      "Purpose": d_purpose, "Urgent": urgent_label,
-                     "Additional Details": d_comments or "None",
-                     "Submitted": ts},
+                     "Additional Details": d_comments or "None", "Submitted": ts},
                     "Standard documents issued within 3 working days. "
                     "Urgent requests within 24 hours.", cc_list
                 )
                 ok = send_email(
-                    f"[OrgX Document] {ref} — {d_type} | {d_name}",
-                    body, gmail_user, gmail_password, recipients, cc_list)
+                    f"[OrgX Document] {ref} — {final_type} | {d_name}",
+                    body, gmail_user, gmail_password, [recipient_email], cc_list
+                )
                 if ok:
+                    log_to_sheet(creds_json, sheet_url, "Document Requests",
+                        [ref, ts, d_name, d_id, d_email, d_bu, final_type,
+                         d_purpose, urgent_label, d_comments, ", ".join(cc_list), "Pending"])
                     st.session_state.docreq_done = True
                     st.session_state.docreq_ref = ref
                     st.rerun()
                 else:
-                    err = st.session_state.get("email_error", "Unknown error")
-                    st.error(f"Submission failed: {err}")
-
+                    st.error(f"Submission failed: {st.session_state.get('email_error','')}")
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PAGE: GRIEVANCE
+# TAB 4 — GRIEVANCE
 # ══════════════════════════════════════════════════════════════════════════════
-elif page == "⚠️ Grievance":
-    st.title("Grievance Form")
+with tab4:
+    st.markdown("### Grievance Form")
     st.caption("All grievances are handled confidentially. OrgX's no-retaliation policy applies.")
     st.divider()
 
     if st.session_state.grievance_done:
         success_block(st.session_state.grievance_ref, "Grievance")
-        st.info(
-            "Your grievance will be acknowledged within **2 working days** "
-            "and resolved within **15 working days** as per OrgX's Tier 2 Grievance Policy."
-        )
-        if st.button("Submit another"):
+        st.info("Your grievance will be acknowledged within **2 working days** "
+                "and resolved within **15 working days** (Tier 2 policy).")
+        if st.button("Submit another grievance"):
             st.session_state.grievance_done = False
             st.rerun()
     else:
-        st.info(
-            "**Before proceeding:** OrgX's Grievance Policy encourages informal resolution "
-            "at Tier 1 first — please attempt a conversation with your reporting manager "
-            "if safe and appropriate to do so. Use this form if that was not possible "
-            "or not appropriate given the nature of the concern."
-        )
+        st.info("**Before proceeding:** Please attempt an informal resolution with your "
+                "reporting manager first (Tier 1), if safe and appropriate. Use this form "
+                "if that was not possible or the grievance involves your manager directly.")
 
-        st.markdown("### Your Details")
+        st.markdown("#### Your Details")
         c1, c2 = st.columns(2)
         with c1:
-            g_name = st.text_input("Full Name *")
-            g_id = st.text_input("Employee ID *")
-            g_email = st.text_input("Work Email *")
+            g_name = st.text_input("Full Name *", key="g_name")
+            g_id = st.text_input("Employee ID *", key="g_id")
+            g_email = st.text_input("Work Email *", key="g_email")
         with c2:
-            g_bu = st.selectbox("Business Unit *", BUS_UNITS)
-            g_dept = st.selectbox("Department *", DEPARTMENTS)
+            g_bu = st.selectbox("Business Unit *", BUS_UNITS, key="g_bu")
+            g_dept = st.selectbox("Department *", DEPARTMENTS, key="g_dept")
 
         st.divider()
-        st.markdown("### Grievance Details")
+        st.markdown("#### Grievance Details")
 
         g_type = st.selectbox("Grievance Type *", [
             "Select...",
@@ -516,65 +576,56 @@ elif page == "⚠️ Grievance":
             "Policy Violation",
             "POSH — Sexual Harassment",
             "Other"
-        ])
+        ], key="g_type")
 
         g_type_other = ""
         if g_type == "Other":
             g_type_other = st.text_input("Please describe the type of grievance *",
-                placeholder="Briefly describe the nature of your concern...")
+                placeholder="Briefly describe the nature of your concern...",
+                key="g_type_other")
 
         if g_type == "POSH — Sexual Harassment":
-            st.warning(
-                "⚠️ For POSH complaints, please also email **posh-ic@orgx.com** directly "
-                "for immediate action under the Prevention of Sexual Harassment Act, 2013. "
-                "Your complaint will be handled with strict confidentiality by the "
-                "Internal Committee."
-            )
+            st.warning("⚠️ For POSH complaints, please also email **posh-ic@orgx.com** "
+                       "directly for immediate action under the POSH Act, 2013. Your "
+                       "complaint will be handled with strict confidentiality by the "
+                       "Internal Committee.")
 
         g_against = st.text_input(
-            "Name or Role of Person / Team this concerns (optional)",
-            placeholder="e.g. Reporting Manager, Team Lead — leave blank if not applicable"
+            "Name or Role this concerns (optional)",
+            placeholder="e.g. Reporting Manager, Team Lead — leave blank if not applicable",
+            key="g_against"
         )
 
-        g_desc = st.text_area(
-            "Description of Grievance *",
-            height=150,
-            placeholder=(
-                "Please describe the concern in as much detail as possible. "
-                "Include relevant dates, locations, and any witnesses if applicable. "
-                "The more context you provide, the more effectively we can support you."
-            )
-        )
+        g_desc = st.text_area("Description of Grievance *", height=150, key="g_desc",
+            placeholder="Please describe the concern in detail. Include relevant dates, "
+                        "locations, and any witnesses if applicable.")
 
-        g_resolution = st.text_area(
-            "What outcome are you seeking? *",
-            height=80,
-            placeholder="e.g. Formal acknowledgement, mediation, policy review, disciplinary action..."
-        )
+        g_resolution = st.text_area("What outcome are you seeking? *",
+            height=80, key="g_resolution",
+            placeholder="e.g. Formal acknowledgement, mediation, policy review, "
+                        "disciplinary action...")
 
         g_tier1 = st.radio(
-            "Have you attempted an informal resolution with your manager? *",
-            ["Yes — it was not resolved", "No — it was not safe or appropriate to do so",
+            "Have you attempted informal resolution with your manager? *",
+            ["Yes — it was not resolved",
+             "No — it was not safe or appropriate",
              "No — the grievance involves my manager directly"],
-            index=0
+            key="g_tier1"
         )
 
         st.divider()
         st.markdown("**CC (optional)**")
-        g_cc_custom = st.text_input(
-            "Email address(es) to copy",
+        g_cc = st.text_input("Email address(es) to copy",
             placeholder="e.g. trusted.colleague@orgx.com",
-            help="Optional. Only add someone you explicitly want copied on this grievance."
-        )
+            key="g_cc",
+            help="Only add someone you explicitly want copied on this grievance.")
 
         st.divider()
-        st.warning(
-            "⚠️ All information submitted here is strictly confidential and will only be "
-            "shared with those directly involved in the resolution process. "
-            "OrgX's no-retaliation policy protects all employees who raise grievances in good faith."
-        )
+        st.warning("⚠️ All information is strictly confidential and shared only with those "
+                   "directly involved in resolution. OrgX's no-retaliation policy protects "
+                   "all employees who raise grievances in good faith.")
 
-        if st.button("Submit Grievance →", type="primary"):
+        if st.button("Submit Grievance →", type="primary", key="grievance_submit"):
             errors = []
             if not g_name: errors.append("Full Name")
             if not g_id: errors.append("Employee ID")
@@ -584,7 +635,7 @@ elif page == "⚠️ Grievance":
             if g_type == "Select...": errors.append("Grievance Type")
             if g_type == "Other" and not g_type_other:
                 errors.append("Please describe the type of grievance")
-            if not g_desc: errors.append("Description of Grievance")
+            if not g_desc: errors.append("Description")
             if not g_resolution: errors.append("Desired Outcome")
             if errors:
                 st.error(f"Please fill in: {', '.join(errors)}")
@@ -594,12 +645,7 @@ elif page == "⚠️ Grievance":
                 ref = gen_ref("GRV")
                 ts = datetime.now().strftime("%d %B %Y, %I:%M %p")
                 final_type = g_type_other if g_type == "Other" else g_type
-                cc_list = []
-                if g_cc_custom:
-                    for e in [x.strip() for x in g_cc_custom.split(",")]:
-                        if "@" in e:
-                            cc_list.append(e)
-                recipients = [recipient_email]
+                cc_list = parse_cc(g_cc)
                 body = email_template(
                     "Grievance Submitted — CONFIDENTIAL", final_type, ref,
                     {"Name": g_name, "Employee ID": g_id, "Email": g_email,
@@ -608,27 +654,26 @@ elif page == "⚠️ Grievance":
                      "Concerns": g_against or "Not specified",
                      "Tier 1 Attempted": g_tier1,
                      "Description": g_desc,
-                     "Desired Outcome": g_resolution,
-                     "Submitted": ts},
-                    "This grievance is strictly confidential. Please acknowledge within "
-                    "2 working days and resolve within 15 working days (Tier 2 policy). "
-                    "Do not share this information beyond those directly involved "
-                    "in the resolution process.",
-                    cc_list
+                     "Desired Outcome": g_resolution, "Submitted": ts},
+                    "CONFIDENTIAL. Acknowledge within 2 working days. "
+                    "Resolve within 15 working days (Tier 2). Do not share "
+                    "beyond those directly involved in resolution.", cc_list
                 )
                 ok = send_email(
                     f"[OrgX Grievance — CONFIDENTIAL] {ref} | {final_type}",
-                    body, gmail_user, gmail_password, recipients, cc_list
+                    body, gmail_user, gmail_password, [recipient_email], cc_list
                 )
                 if ok:
+                    log_to_sheet(creds_json, sheet_url, "Grievances",
+                        [ref, ts, g_name, g_id, g_email, g_bu, g_dept,
+                         final_type, g_against, g_tier1, g_desc,
+                         g_resolution, ", ".join(cc_list), "Open"])
                     st.session_state.grievance_done = True
                     st.session_state.grievance_ref = ref
                     st.rerun()
                 else:
-                    err = st.session_state.get("email_error", "Unknown error")
-                    st.error(f"Submission failed: {err}")
-
-
+                    st.error(f"Submission failed: {st.session_state.get('email_error','')}")
 
 st.divider()
-st.caption('OrgX HR Portal · All submissions are confidential and processed by the People & Culture team')
+st.caption("OrgX HR Portal · All submissions are confidential and "
+           "processed by the People & Culture team")
