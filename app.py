@@ -14,6 +14,14 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown("""
+<style>
+    [data-testid="stSidebar"] { display: none; }
+    [data-testid="collapsedControl"] { display: none; }
+    .block-container { padding-left: 2rem; padding-right: 2rem; }
+</style>
+""", unsafe_allow_html=True)
+
 # ── LOAD SECRETS ──────────────────────────────────────────────────────────────
 try:
     GROQ_API_KEY    = st.secrets["GROQ_API_KEY"]
@@ -242,8 +250,15 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # TAB 1 — HR ASSISTANT
 # ══════════════════════════════════════════════════════════════════════════════
 with tab1:
-    st.markdown("### OrgX HR Assistant")
-    st.caption("Ask me about leave, reimbursements, appraisals, payroll, or grievances.")
+    col_title, col_clear = st.columns([6, 1])
+    with col_title:
+        st.markdown("### OrgX HR Assistant")
+        st.caption("Ask me about leave, reimbursements, appraisals, payroll, or grievances.")
+    with col_clear:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🗑️ Clear", key="clear_chat", help="Clear conversation history"):
+            st.session_state.messages = []
+            st.rerun()
     st.divider()
 
     if not st.session_state.messages:
@@ -265,13 +280,14 @@ For resignation, document requests, or grievances use the tabs above.""")
         else:
             with st.chat_message("assistant", avatar="🤖"):
                 st.write(msg["content"])
-                if msg.get("escalation"):
+                if msg.get("grievance"):
+                    st.info("⚠️ To formally raise a grievance, use the "
+                            "**⚠️ Grievance** tab at the top of this page. "
+                            "All submissions are confidential and protected "
+                            "by OrgX's no-retaliation policy.")
+                elif msg.get("escalation"):
                     st.warning("This is outside my knowledge base. "
                                "Use the tabs above to reach the P&C team.")
-
-    if st.button("Clear conversation", key="clear_chat"):
-        st.session_state.messages = []
-        st.rerun()
 
     user_input = st.chat_input("Type your HR question here...")
     if user_input:
@@ -283,23 +299,50 @@ For resignation, document requests, or grievances use the tabs above.""")
                 try:
                     response_text = get_groq_response(st.session_state.messages)
                     st.write(response_text)
-                    phrases = [
+
+                    # Detect grievance intent from user input
+                    grievance_triggers = [
+                        "grievance", "complaint", "raise a concern",
+                        "formal complaint", "harassment", "bullying",
+                        "unfair treatment", "discrimination", "report",
+                        "posh", "raise an issue", "formal grievance"
+                    ]
+                    is_grievance = any(
+                        t in user_input.lower() for t in grievance_triggers
+                    )
+
+                    # Detect general escalation from bot response
+                    escalation_phrases = [
                         "don't have information", "outside my current knowledge",
                         "raise a support ticket", "i'm sorry, i don't have"
                     ]
-                    needs_escalation = any(p in response_text.lower() for p in phrases)
+                    needs_escalation = any(
+                        p in response_text.lower() for p in escalation_phrases
+                    )
+
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": response_text,
-                        "escalation": needs_escalation
+                        "escalation": needs_escalation and not is_grievance,
+                        "grievance": is_grievance
                     })
-                    if needs_escalation:
-                        st.warning("Use the tabs above to reach the P&C team directly.")
+
+                    if is_grievance:
+                        st.info("⚠️ To formally raise a grievance, use the "
+                                "**⚠️ Grievance** tab at the top of this page. "
+                                "All submissions are confidential and protected "
+                                "by OrgX's no-retaliation policy.")
+                    elif needs_escalation:
+                        st.warning("This is outside my knowledge base. "
+                                   "Use the tabs above to reach the P&C team directly.")
+
                     log_to_sheet("HR Assistant", [
                         gen_ref("BOT"),
                         datetime.now().strftime("%d %b %Y %H:%M"),
                         user_input, response_text,
-                        "Yes" if needs_escalation else "No", "Closed"
+                        "Grievance" if is_grievance else (
+                            "Yes" if needs_escalation else "No"),
+                        "Closed"
                     ])
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
