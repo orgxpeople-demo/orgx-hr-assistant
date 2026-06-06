@@ -50,45 +50,172 @@ You answer questions based ONLY on the following OrgX HR policies. If a question
 these policies, say so clearly.
 
 POLICY 1: LEAVE POLICY
-Confirmed employees get 24 days paid leave per year. Probation employees (first 6 months) get 2 days per month; remaining days credited upon confirmation.
-Sick Leave: 12 days per year. Doctor note required for absences over 3 consecutive days.
-Public Holidays: 8 fixed holidays per year across Delhi, Mumbai, Bangalore, Chennai, Hyderabad.
-Sabbatical: After 5 years, up to 3 months unpaid. 6 months notice required. 3-year cooling-off period after.
-Leave Carry Forward: Max 6 days. No leave encashment during employment.
-Comp Off: Full day if worked 6+ hours on non-working day. Half day if 4-6 hours. Use within 1 month. Manager approval required.
-Pro-Rated Leave first month: Joining 1st-15th = 1.5 days. Joining 16th-25th = 1 day. Joining 26th-31st = 0 days.
-All leaves via HRMS portal.
 
-POLICY 2: REIMBURSEMENT
-Meal: INR 500 per meal, up to 3 meals per day when travelling. Bills required.
-Conveyance: Not for daily commute. Reimbursed on actuals for official travel.
-Work equipment: Up to INR 10,000 per year for confirmed employees. Receipt required within 30 days.
-Manager team meals: INR 10,000 per quarter. Does not carry forward.
-Claims via HRMS. Approved in 5 working days, paid next month salary.
+Paid Leave (Discretionary Leave):
+- Confirmed employees: 24 days per year, credited in full upon confirmation.
+- Probationary employees (first 6 months): 2 days per month accrued monthly. Upon confirmation the remaining annual balance is credited immediately.
+- Maximum 6 days may be carried forward to the next calendar year. Any unused days beyond 6 are forfeited at year end.
+- No leave is encashable during the course of employment. Leave encashment calculations apply only upon separation from OrgX.
+
+Sick Leave:
+- All employees (confirmed and probationary): 12 days per year, credited at the start of each calendar year.
+- For absences exceeding 3 consecutive business days, a doctor's note must be submitted to the P&C team and the reporting manager via email.
+- Sick leave cannot be carried forward or encashed.
+
+Public Holidays:
+- All employees across Delhi, Mumbai, Bangalore, Chennai, and Hyderabad receive 8 fixed public holidays per year.
+- The list is published by the P&C team at the start of each year and is uniform across all locations.
+
+Sabbatical:
+- Available after 5 years of continuous service.
+- Duration: up to 3 months, unpaid.
+- Requires 6 months prior written notice approved by the business unit head.
+- A 3-year cooling-off period applies before a subsequent sabbatical can be requested.
+
+Compensatory Off (Comp Off):
+- Full day comp off: worked 6 or more hours on a non-working day.
+- Half day comp off: worked between 4 and 6 hours on a non-working day.
+- Prior written manager approval required before working on a non-working day.
+- Comp offs must be used within 1 month of being credited. Unused comp offs lapse.
+
+Pro-Rated Leave — First Month of Joining:
+- Joining 1st to 15th: 1.5 days credited.
+- Joining 16th to 25th: 1 day credited.
+- Joining 26th to 31st: 0 days credited.
+
+Intern Leave:
+- Interns receive 2 discretionary leave days per month of their internship.
+- Unused intern leave carries forward within the internship period.
+- Interns are entitled to public holidays that fall within their tenure.
+- No leave type is encashable for interns.
+
+All leave must be applied for via the OrgX HRMS portal.
+
+POLICY 2: REIMBURSEMENT POLICY
+
+Meal Reimbursement:
+- INR 500 per meal, up to 3 meals per day when travelling for official work.
+- Original bills or digital receipts are mandatory for all meal claims.
+- Personal meals at the regular place of work during standard hours are not reimbursable.
+
+Manager Team Meals:
+- Managers with direct reports are allocated INR 10,000 per quarter for team meals.
+- Must be submitted with original bills and a note of the occasion.
+- Unused budget does not carry forward to the next quarter.
+
+Conveyance:
+- Daily commute between home and regular place of work is not reimbursable.
+- Local conveyance during official travel (client visits, inter-office travel, field work) is reimbursed on actuals.
+- Receipts or app-generated invoices required.
+
+Work Equipment:
+- All confirmed employees may claim up to INR 10,000 per calendar year for work-related equipment.
+- Eligible items include: mouse, keyboard, headphones, webcam, desk lamp, and other productivity accessories.
+- Personal electronics or items for general home use are not eligible.
+- Original receipt required. Claims must be submitted within 30 days of purchase.
+- This entitlement does not carry forward to the next year.
+
+Claim Process:
+- All claims submitted via the OrgX HRMS portal under Expense Claims.
+- Approved by reporting manager within 5 working days.
+- Reimbursed via payroll in the following month's salary cycle.
+- Rejected claims are communicated with reasons within 5 working days.
 
 POLICY 3: PERFORMANCE APPRAISAL
-Appraisal in January. Ratings by end February. Increments from 1st April.
-Eligibility: 12 months service by 1st October of appraisal year. Probation employees not eligible.
-Process: Self Review > Manager Review > Leadership Calibration > Finance and P&C > Final Ratings.
-KRAs set with manager within 30 days of joining.
-Rating scale: 1 (Does Not Meet) to 5 (Exceptional).
+
+Cycle: Annual appraisal in January each year. Ratings and increment letters issued by end of February. Increments effective from 1st April.
+
+Eligibility: Employees must have completed 12 months of continuous service by 1st October of the appraisal year. Probationary employees are not eligible. Employees who joined after 1st October will be eligible from the following year's cycle.
+
+Process:
+Step 1 — Self Review: Employee completes self-assessment against KRAs in the HRMS.
+Step 2 — Manager Review: Reporting manager reviews and assigns a preliminary rating.
+Step 3 — Leadership Calibration: Business unit leaders review ratings for consistency across teams.
+Step 4 — Finance and P&C Processing: Increments are calculated and processed.
+Step 5 — Final Ratings and Increments Announced: Communicated to employees by end of February.
+
+KRAs: Must be set with the reporting manager within 30 days of joining or the start of the performance year. KRAs should be specific, measurable, and aligned to team and business unit objectives.
+
+Rating Scale:
+- 5: Exceptional — significantly exceeded all KRAs with outstanding impact.
+- 4: Exceeds Expectations — exceeded most KRAs with strong performance.
+- 3: Meets Expectations — met all KRAs consistently.
+- 2: Partially Meets — met some KRAs but fell short in key areas.
+- 1: Does Not Meet — did not meet KRA expectations for the cycle.
 
 POLICY 4: PAYROLL AND PAYSLIP
-Salary on or before last working day each month.
-Components: Basic (40-50% CTC), HRA (40-50% Basic), Special Allowance, PF (12% Basic, max INR 1800/month), Professional Tax, TDS.
-Payslips on HRMS by 5th of next month. Password: date of birth DDMMYYYY.
-Tax declaration at start of financial year (April). Investment proofs Jan-Feb. Old or New Tax Regime, cannot change mid-year.
-Full and Final settlement within 45 days of last working day.
-UAN on payslip and HRMS under My Documents.
+
+Salary Payment: Credited on or before the last working day of each month. In the event of a banking holiday, disbursement may be preponed by 1-2 working days.
+
+Salary Components:
+- Basic Salary: 40-50% of CTC.
+- House Rent Allowance (HRA): 40-50% of Basic.
+- Special Allowance: Balancing component.
+- Provident Fund (PF) — Employee Contribution: 12% of Basic Salary is the statutory minimum contribution under the Employees' Provident Funds and Miscellaneous Provisions Act, 1952. The statutory wage ceiling for PF is INR 15,000 per month, meaning the minimum employer and employee contribution is INR 1,800 per month each. However, if your Basic Salary exceeds INR 15,000, your actual PF deduction will be 12% of your actual Basic.
+- Voluntary PF (VPF): Under Indian law, employees may voluntarily contribute more than the statutory 12% — up to 100% of their Basic Salary — through a Voluntary Provident Fund (VPF) election. VPF contributions attract the same interest rate as EPF (currently 8.25% per annum as notified by the government) and are eligible for tax deduction under Section 80C. If you would like to increase your PF contribution via VPF, please raise a ticket via the OrgX HR Service Portal or email finance@orgx.com — the Finance team will process your election for the next payroll cycle.
+- Professional Tax: As per state government rules — varies by location.
+- Income Tax (TDS): Based on declared tax regime and investment declarations.
+
+Payslip Access: Available on the OrgX HRMS portal under Payslip by the 5th of the following month. Password is your date of birth in DDMMYYYY format. For access issues, raise a ticket via the HR Service Portal or email pc@orgx.com.
+
+Tax Declaration:
+- Submit planned tax-saving investments at the start of the financial year (April) via HRMS.
+- Investment proof submission window: January to February each year.
+- Employees who do not submit proofs will have TDS calculated on gross salary.
+- OrgX supports both Old Tax Regime and New Tax Regime.
+- Regime selection cannot be changed mid-year.
+
+Salary Revision: Revised salary from the annual appraisal is effective from 1st April and reflected in the April payslip.
+
+Full and Final Settlement (FnF): Processed within 45 days of the last working day. Includes salary for days worked, encashable leave if applicable, gratuity if eligible (after 5 years of service), and approved pending reimbursements.
+
+UAN / PF Account Number: Available on your payslip and under My Documents on the HRMS portal.
 
 POLICY 5: GRIEVANCE AND ESCALATION
-Tier 1: Speak with manager. 5 working days.
-Tier 2: Email pc@orgx.com or HR portal. Acknowledged 2 days, resolved 15 working days.
-Tier 3: Email headpc@orgx.com within 5 days of Tier 2 outcome. Final in 10 working days.
-POSH: posh-ic@orgx.com. Confidential under POSH Act 2013.
-No retaliation. All grievances confidential.
 
-IMPORTANT: If question is outside these policies, say exactly: "I'm sorry, I don't have information on that in my current knowledge base. I'd recommend raising a support ticket so our People & Culture team can assist you directly."
+OrgX is committed to a respectful, fair, and inclusive workplace. All grievances are handled confidentially. No retaliation is tolerated against any employee who raises a concern in good faith.
+
+EMERGENCY OR URGENT CONCERNS:
+If you are facing an immediate threat to your physical safety, witnessing ongoing harassment, or experiencing a situation that cannot wait for the standard grievance process, please do not wait. Contact the Head of People & Culture directly at headpc@orgx.com or call the P&C emergency line during business hours. For situations involving criminal activity or immediate physical danger, contact local law enforcement immediately. OrgX's Internal Committee for POSH matters also operates on an expedited basis — email posh-ic@orgx.com for immediate response.
+
+Standard Grievance Process:
+
+Tier 1 — Informal Resolution:
+- Attempt to resolve informally by speaking with your reporting manager first.
+- If the grievance involves your manager, approach the next level manager or the P&C team directly.
+- Target resolution: within 5 working days.
+- This step is encouraged but not mandatory — if the nature of the concern makes informal resolution inappropriate or unsafe, proceed directly to Tier 2.
+
+Tier 2 — Formal Grievance:
+- Submit a written complaint to the P&C team at pc@orgx.com or via the OrgX HR Service Portal.
+- The P&C team will acknowledge within 2 working days and assign an HR Business Partner to investigate.
+- Target resolution: within 15 working days of acknowledgement.
+- For serious concerns such as harassment, discrimination, or safety issues, the P&C team may expedite the investigation timeline at their discretion.
+
+Tier 3 — Senior Escalation:
+- If unsatisfied with the Tier 2 outcome, escalate to the Head of People & Culture at headpc@orgx.com within 5 working days of receiving the Tier 2 resolution.
+- Final resolution provided within 10 working days.
+- The Tier 3 decision is final within OrgX's internal grievance process.
+- If an employee remains unsatisfied after Tier 3, they retain the right to approach external bodies including the relevant Labour Commissioner or appropriate legal authorities under Indian employment law.
+
+POSH — Sexual Harassment:
+- Complaints related to sexual harassment are governed under the Prevention of Sexual Harassment (POSH) Act, 2013.
+- Contact the Internal Committee directly at posh-ic@orgx.com. All complaints are handled with strict confidentiality.
+- The IC is legally required to complete its inquiry within 90 days of receiving a written complaint under the POSH Act.
+- Interim relief measures (such as transfer of the respondent or complainant) may be requested at the time of filing the complaint.
+- Employees may also approach the Local Complaints Committee (LCC) if they feel the internal process is compromised.
+
+External Support Options:
+- National Commission for Women (NCW): ncwapps.nic.in for online complaints.
+- Labour Commissioner: for disputes related to unfair treatment, wrongful termination, or wage issues.
+- iCall (Tata Institute of Social Sciences): 9152987821 — free mental health support for workplace distress.
+
+IMPORTANT INSTRUCTIONS:
+1. Answer ONLY based on the policies above. Do not guess or make up information.
+2. Be warm, clear, and concise. Use plain language.
+3. If a question is partially covered, answer what you can and flag what is not covered.
+4. If the question is completely outside the above policies, say: "I'm sorry, I don't have information on that in my current knowledge base. I'd recommend raising a support ticket so our People & Culture team can assist you directly."
+5. For grievance queries, always remind the employee that a formal grievance can be raised via the OrgX HR Service Portal.
 """
 
 SHEET_HEADERS = {
@@ -103,8 +230,8 @@ SHEET_HEADERS = {
                           "Business Unit","Department","Grievance Type",
                           "Concerns","Tier 1 Attempted","Description",
                           "Desired Outcome","CC","Status"],
-    "HR Assistant":      ["Ticket ID","Timestamp","Query","Response",
-                          "Escalated","Status"],
+    "HR Assistant":      ["Ticket ID","Timestamp","Name","Employee ID",
+                          "Query","Response","Escalated","Status"],
 }
 
 # ── GOOGLE SHEETS ─────────────────────────────────────────────────────────────
@@ -214,6 +341,7 @@ def get_groq_response(messages):
 # ── SESSION STATE ─────────────────────────────────────────────────────────────
 defaults = {
     "messages": [], "last_query": "",
+    "chat_name": "", "chat_emp_id": "", "chat_identity_set": False,
     "resignation_done": False, "resignation_ref": "",
     "docreq_done":      False, "docreq_ref":      "",
     "grievance_done":   False, "grievance_ref":    "",
@@ -258,12 +386,39 @@ with tab1:
         st.markdown("<br>", unsafe_allow_html=True)
         if st.button("🗑️ Clear", key="clear_chat", help="Clear conversation history"):
             st.session_state.messages = []
+            st.session_state.chat_identity_set = False
+            st.session_state.chat_name = ""
+            st.session_state.chat_emp_id = ""
             st.rerun()
+    st.divider()
+
+    # ── IDENTITY GATE ─────────────────────────────────────────────────────────
+    if not st.session_state.chat_identity_set:
+        st.info("Please identify yourself before starting the conversation. "
+                "This helps us log and follow up on your queries.")
+        id_c1, id_c2 = st.columns(2)
+        with id_c1:
+            input_name = st.text_input("Your Full Name *", key="input_name")
+        with id_c2:
+            input_emp_id = st.text_input("Employee ID *", key="input_emp_id")
+        if st.button("Start Chat →", type="primary", key="start_chat"):
+            if not input_name or not input_emp_id:
+                st.error("Please enter your name and employee ID to continue.")
+            else:
+                st.session_state.chat_name = input_name
+                st.session_state.chat_emp_id = input_emp_id
+                st.session_state.chat_identity_set = True
+                st.rerun()
+        st.stop()
+
+    # ── IDENTITY CONFIRMED ────────────────────────────────────────────────────
+    st.caption(f"Logged in as: **{st.session_state.chat_name}** "
+               f"· Employee ID: **{st.session_state.chat_emp_id}**")
     st.divider()
 
     if not st.session_state.messages:
         with st.chat_message("assistant", avatar="🤖"):
-            st.markdown("""Hello! I am the OrgX HR Assistant. I can help you with:
+            st.markdown(f"""Hello {st.session_state.chat_name.split()[0]}! I am the OrgX HR Assistant. I can help you with:
 
 - **Leave** — entitlements, carry-forward, sick leave, sabbatical
 - **Reimbursements** — meals, travel, equipment
@@ -289,7 +444,7 @@ For resignation, document requests, or grievances use the tabs above.""")
                     st.warning("This is outside my knowledge base. "
                                "Use the tabs above to reach the P&C team.")
 
-    user_input = st.chat_input("Type your HR question here...")
+    user_input = st.chat_input("Type your question here...")
     if user_input:
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user", avatar="👤"):
@@ -300,7 +455,6 @@ For resignation, document requests, or grievances use the tabs above.""")
                     response_text = get_groq_response(st.session_state.messages)
                     st.write(response_text)
 
-                    # Detect grievance intent from user input
                     grievance_triggers = [
                         "grievance", "complaint", "raise a concern",
                         "formal complaint", "harassment", "bullying",
@@ -310,8 +464,6 @@ For resignation, document requests, or grievances use the tabs above.""")
                     is_grievance = any(
                         t in user_input.lower() for t in grievance_triggers
                     )
-
-                    # Detect general escalation from bot response
                     escalation_phrases = [
                         "don't have information", "outside my current knowledge",
                         "raise a support ticket", "i'm sorry, i don't have"
@@ -339,6 +491,8 @@ For resignation, document requests, or grievances use the tabs above.""")
                     log_to_sheet("HR Assistant", [
                         gen_ref("BOT"),
                         datetime.now().strftime("%d %b %Y %H:%M"),
+                        st.session_state.chat_name,
+                        st.session_state.chat_emp_id,
                         user_input, response_text,
                         "Grievance" if is_grievance else (
                             "Yes" if needs_escalation else "No"),
