@@ -441,8 +441,18 @@ For resignation, document requests, or grievances use the tabs above.""")
                             "All submissions are confidential and protected "
                             "by OrgX's no-retaliation policy.")
                 elif msg.get("escalation"):
-                    st.warning("This is outside my knowledge base. "
-                               "Use the tabs above to reach the P&C team.")
+                    st.warning(
+                        "This query is outside what I can answer from OrgX's "
+                        "current policy documents. Here's what you can do:\n\n"
+                        "📝 **Raise a Ticket** — use the Raise a Ticket tab to "
+                        "send your query directly to the P&C team\n\n"
+                        "🚪 **Resignation** — use the Resignation tab if you are "
+                        "looking to submit your resignation\n\n"
+                        "📄 **Document Request** — use the Document Request tab "
+                        "if you need an official HR document\n\n"
+                        "⚠️ **Grievance** — use the Grievance tab if you need to "
+                        "raise a formal concern"
+                    )
 
     user_input = st.chat_input("Type your question here...")
     if user_input:
@@ -485,8 +495,18 @@ For resignation, document requests, or grievances use the tabs above.""")
                                 "All submissions are confidential and protected "
                                 "by OrgX's no-retaliation policy.")
                     elif needs_escalation:
-                        st.warning("This is outside my knowledge base. "
-                                   "Use the tabs above to reach the P&C team directly.")
+                        st.warning(
+                            "This query is outside what I can answer from OrgX's "
+                            "current policy documents. Here's what you can do:\n\n"
+                            "📝 **Raise a Ticket** — use the Raise a Ticket tab to "
+                            "send your query directly to the P&C team\n\n"
+                            "🚪 **Resignation** — use the Resignation tab if you are "
+                            "looking to submit your resignation\n\n"
+                            "📄 **Document Request** — use the Document Request tab "
+                            "if you need an official HR document\n\n"
+                            "⚠️ **Grievance** — use the Grievance tab if you need to "
+                            "raise a formal concern"
+                        )
 
                     log_to_sheet("HR Assistant", [
                         gen_ref("BOT"),
