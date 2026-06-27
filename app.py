@@ -323,7 +323,6 @@ def parse_cc(raw):
 
 def success_block(ref_id, label="Submission"):
     st.success(f"✅ {label} submitted successfully! Reference ID: **{ref_id}**")
-    st.info("The People & Culture team will acknowledge within 24 hours.")
 
 def get_groq_response(messages):
     client = Groq(api_key=GROQ_API_KEY)
@@ -623,7 +622,9 @@ with tab2:
 
     if st.session_state.resignation_done:
         success_block(st.session_state.resignation_ref, "Resignation Notice")
-        st.info("Please ensure all handover documentation is completed "
+        st.info("The People & Culture team will acknowledge your resignation "
+                "within **24 hours** and initiate the offboarding process. "
+                "Please ensure all handover documentation is completed "
                 "before your last working day.")
         if st.button("Submit another resignation"):
             st.session_state.resignation_done = False
@@ -738,6 +739,9 @@ with tab3:
 
     if st.session_state.docreq_done:
         success_block(st.session_state.docreq_ref, "Document Request")
+        st.info("Standard documents are issued within **3 working days**. "
+                "Urgent requests are fulfilled within **24 hours**. "
+                "The P&C team will send the document directly to your work email.")
         if st.button("Submit another request"):
             st.session_state.docreq_done = False
             st.rerun()
@@ -837,6 +841,13 @@ with tab4:
         success_block(st.session_state.grievance_ref, "Grievance")
         st.info("Your grievance will be acknowledged within **2 working days** "
                 "and resolved within **15 working days** (Tier 2 policy).")
+        st.warning("⚠️ **If your concern is urgent or involves immediate risk** — "
+                   "such as harassment, bullying, discrimination, or a safety concern "
+                   "— please do not wait. Contact the Head of People & Culture directly "
+                   "at **headpc@orgx.com** for expedited handling. For POSH-related "
+                   "complaints, email the Internal Committee at **posh-ic@orgx.com** "
+                   "immediately. If there is any risk to your physical safety, "
+                   "contact local law enforcement.")
         if st.button("Submit another grievance"):
             st.session_state.grievance_done = False
             st.rerun()
