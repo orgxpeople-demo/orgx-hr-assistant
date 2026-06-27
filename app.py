@@ -342,6 +342,7 @@ def get_groq_response(messages):
 defaults = {
     "messages": [], "last_query": "",
     "chat_name": "", "chat_emp_id": "", "chat_identity_set": False,
+    "show_ticket_form": False, "ticket_done": False, "ticket_ref": "",
     "resignation_done": False, "resignation_ref": "",
     "docreq_done":      False, "docreq_ref":      "",
     "grievance_done":   False, "grievance_ref":    "",
@@ -389,6 +390,10 @@ with tab1:
             st.session_state.chat_identity_set = False
             st.session_state.chat_name = ""
             st.session_state.chat_emp_id = ""
+            st.session_state.show_ticket_form = False
+            st.session_state.ticket_done = False
+            st.session_state.ticket_ref = ""
+            st.session_state.last_query = ""
             st.rerun()
     st.divider()
 
@@ -443,15 +448,12 @@ For resignation, document requests, or grievances use the tabs above.""")
                 elif msg.get("escalation"):
                     st.warning(
                         "This query is outside what I can answer from OrgX's "
-                        "current policy documents. Here's what you can do:\n\n"
-                        "📝 **Raise a Ticket** — use the Raise a Ticket tab to "
+                        "current policy documents. You can:\n\n"
+                        "📝 **Raise a Ticket** — fill in the form below to "
                         "send your query directly to the P&C team\n\n"
-                        "🚪 **Resignation** — use the Resignation tab if you are "
-                        "looking to submit your resignation\n\n"
-                        "📄 **Document Request** — use the Document Request tab "
-                        "if you need an official HR document\n\n"
-                        "⚠️ **Grievance** — use the Grievance tab if you need to "
-                        "raise a formal concern"
+                        "🚪 Use the **Resignation** tab to submit a resignation\n\n"
+                        "📄 Use the **Document Request** tab to request an HR document\n\n"
+                        "⚠️ Use the **Grievance** tab to raise a formal concern"
                     )
 
     user_input = st.chat_input("Type your question here...")
@@ -497,16 +499,15 @@ For resignation, document requests, or grievances use the tabs above.""")
                     elif needs_escalation:
                         st.warning(
                             "This query is outside what I can answer from OrgX's "
-                            "current policy documents. Here's what you can do:\n\n"
-                            "📝 **Raise a Ticket** — use the Raise a Ticket tab to "
+                            "current policy documents. You can:\n\n"
+                            "📝 **Raise a Ticket** — fill in the form below to "
                             "send your query directly to the P&C team\n\n"
-                            "🚪 **Resignation** — use the Resignation tab if you are "
-                            "looking to submit your resignation\n\n"
-                            "📄 **Document Request** — use the Document Request tab "
-                            "if you need an official HR document\n\n"
-                            "⚠️ **Grievance** — use the Grievance tab if you need to "
-                            "raise a formal concern"
+                            "🚪 Use the **Resignation** tab to submit a resignation\n\n"
+                            "📄 Use the **Document Request** tab to request an HR document\n\n"
+                            "⚠️ Use the **Grievance** tab to raise a formal concern"
                         )
+                        st.session_state.show_ticket_form = True
+                        st.session_state.last_query = user_input
 
                     log_to_sheet("HR Assistant", [
                         gen_ref("BOT"),
@@ -522,6 +523,95 @@ For resignation, document requests, or grievances use the tabs above.""")
                     st.error(f"Error: {str(e)}")
                     st.session_state.messages.pop()
     st.caption("Powered by Groq AI · Responses based on OrgX policy documents only")
+
+    # ── INLINE TICKET FORM ────────────────────────────────────────────────────
+    if st.session_state.show_ticket_form and not st.session_state.ticket_done:
+        st.divider()
+        st.markdown("#### 📝 Raise a Support Ticket")
+        st.caption("The P&C team will respond within 24–48 hours.")
+
+        tc1, tc2 = st.columns(2)
+        with tc1:
+            t_name  = st.text_input("Full Name *",   key="t_name",
+                value=st.session_state.chat_name)
+            t_id    = st.text_input("Employee ID *", key="t_id",
+                value=st.session_state.chat_emp_id)
+        with tc2:
+            t_email = st.text_input("Work Email *",  key="t_email")
+            t_bu    = st.selectbox("Business Unit *", BUS_UNITS, key="t_bu")
+
+        t_cat = st.selectbox("Query Category *", [
+            "Select...", "Leave & Attendance", "Payroll & Compensation",
+            "Reimbursements", "Performance & Appraisal",
+            "Policy & Compliance", "Documents & Letters",
+            "Learning & Development", "Other"
+        ], key="t_cat")
+
+        t_query = st.text_area("Your Query *",
+            value=st.session_state.last_query,
+            height=100, key="t_query",
+            placeholder="Describe your query in detail...")
+
+        t_cc = st.text_input("CC (optional)",
+            placeholder="e.g. your.manager@orgx.com",
+            key="t_cc",
+            help="Separate multiple emails with a comma.")
+
+        col_sub, col_can = st.columns([1, 4])
+        with col_sub:
+            t_submit = st.button("Send Ticket →", type="primary", key="t_submit")
+        with col_can:
+            if st.button("Cancel", key="t_cancel"):
+                st.session_state.show_ticket_form = False
+                st.rerun()
+
+        if t_submit:
+            errors = []
+            if not t_name:  errors.append("Full Name")
+            if not t_id:    errors.append("Employee ID")
+            if not t_email: errors.append("Work Email")
+            if not t_query: errors.append("Query")
+            if t_bu  == "Select...": errors.append("Business Unit")
+            if t_cat == "Select...": errors.append("Query Category")
+            if errors:
+                st.error(f"Please fill in: {', '.join(errors)}")
+            else:
+                ref = gen_ref("TKT")
+                ts  = datetime.now().strftime("%d %B %Y, %I:%M %p")
+                cc_list = parse_cc(t_cc)
+                body = email_template(
+                    "New Support Ticket", ref,
+                    {"Name": t_name, "Employee ID": t_id,
+                     "Email": t_email, "Business Unit": t_bu,
+                     "Category": t_cat, "Query": t_query,
+                     "Submitted": ts},
+                    "Please respond within 24–48 hours.", cc_list
+                )
+                if send_email(
+                    f"[OrgX Ticket] {ref} — {t_cat} | {t_name}",
+                    body, cc_list
+                ):
+                    log_to_sheet("HR Assistant", [
+                        ref, ts, t_name, t_id, t_email, t_bu,
+                        t_query, "Ticket raised via chat", "Yes", "Open"
+                    ])
+                    st.session_state.ticket_done = True
+                    st.session_state.ticket_ref  = ref
+                    st.session_state.show_ticket_form = False
+                    st.rerun()
+                else:
+                    st.error(f"Submission failed: "
+                             f"{st.session_state.get('email_error','Unknown error')}")
+
+    if st.session_state.ticket_done:
+        st.divider()
+        st.success(f"✅ Ticket submitted successfully! "
+                   f"Reference ID: **{st.session_state.ticket_ref}**")
+        st.info("The P&C team will respond within 24–48 hours.")
+        if st.button("Raise another ticket", key="raise_another"):
+            st.session_state.ticket_done = False
+            st.session_state.show_ticket_form = False
+            st.rerun()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — RESIGNATION
